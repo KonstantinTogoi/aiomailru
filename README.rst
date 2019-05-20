@@ -1,4 +1,5 @@
-# Platform@Mail.ru Python REST API wrapper
+Platform@Mail.ru Python REST API wrapper
+========================================
 
 Install package using pip
 
