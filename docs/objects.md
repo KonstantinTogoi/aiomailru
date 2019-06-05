@@ -12,7 +12,7 @@ Some objects are used in several methods.
 
 ## User
 
-Object contains information about user and contains following fields:
+Object contains information about user/group and contains following fields:
 
 | **fields** | **description** |
 | --- | --- |
@@ -42,15 +42,19 @@ Object contains information about user and contains following fields:
 | **referer_id** <br> ``string`` | Identifies where a user came from; see https://api.mail.ru/docs/guides/ref/. |
 | **is_online** <br> ``integer, [0,1]`` | Information whether the user is online. |
 | **is_friend** <br> ``integer, [0,1]`` | Information whether the user is a friend of current user. |
+| **friends_count** <br> ``integer`` | Number of friends. |
 | **follower** <br> ``integer, [0,1]`` | Information whether the user is a follower of current user. |
 | **following** <br> ``integer, [0,1]`` | Information whether current user is a follower of the user. |
-| **friends_count** <br> ``integer`` | Number of friends. |
+| **subscribe** <br> ``integer, [0,1]`` | Information whether current user is a subscriber of the user. |
+| **subscribers_count** <br> ``integer`` | Number of subscribers. |
 | **video_count** <br> ``integer`` | Number of videos. |
 | **is_verified** <br> ``integer, [0,1]`` | Information whether the user is verified. |
 | **vip** <br> ``integer, [0,1]`` | Information whether the user is vip. |
 | **app_installed** <br> ``integer, [0,1]`` | Information whether the user has installed the current app. |
 | **last_visit** <br> ``integer`` | Date (in Unixtime) of the last user's visit. |
-| **cover** <br> ``object`` <br> Returns only with a comment. | Information about profile's cover; see [Cover](#Cover). |
+| **cover** <br> ``object`` <br> Returns only with a comment and only for users. | Information about profile's cover; see [Cover](#Cover). |
+| **group_info** <br> ``object`` <br> Returns only for groups.  | Object with following fields: <br> <ul> <li> **category_id** ``integer`` </li> <li> **short_description** ``string`` </li> <li> **full_description** ``string`` </li> <li> **interests** ``string`` </li> <li> **posts_cnt** ``integer`` </li> <li> **category_name** ``string`` </li> <li> **rules** ``string`` </li> </ul> |
+| **location** <br> ``object``  | Object with following fields: <br> <ul> <li> **country** ``object`` <br> <ul> <li>**name** ``string``</li> <li>**id** ``integer``</li></ul> </li> <li> **city** ``object`` <ul> <li>**name** ``string``</li> <li>**id** ``integer``</li></ul> </li> <li> **region** ``string``<ul> <li>**name** ``string``</li> <li>**id** ``integer``</li></ul> </li> </ul> |
 
 
 
@@ -68,6 +72,7 @@ Object describes an event and contains following fields:
 | **attachments** <br> ``array``| Information about attachments to the event (link, image, video, audio, user, ...), if any; see [Attachments](#Attachments). |
 | **time** <br> ``integer``| Date (in Unixtime) of the event. |
 | **huid** <br> ``string`` | Event ID in the following format: ``<User's checksum><Event ID>``. |
+| **generator** <br> ``object``| Object with following fields: <br> <ul> <li> **icon** ``string`` - URL of app icon. </li> <li> **url** ``string`` - App url. </li> <li> **app_id** ``integer`` - App ID. </li> <li> **type** ``string`` - App type. </li> <li> **title** ``string`` - App title. </li> </ul>. |
 | **user_text** <br> ``string``| User text. |
 | **is_liked_by_me** <br> ``integer, [0,1]``| Shows if current user has liked the event. |
 | **subtype** <br> ``string``| "event". |
@@ -77,6 +82,7 @@ Object describes an event and contains following fields:
 | **id** <br> ``string`` | Event ID. |
 | **text_media** <br> ``array`` <br> Returns only if event's type name is *micropost*. | Information about text; see [Attachments](#Attachments). |
 | **comments_count** <br> ``integer`` <br> Returns only if current event is commentable. | Number of comments. |
+| **action_links** <br> ``array`` | Each object contains following fields: <br> <ul> <li> **text** ``string`` </li> <li> **href** ``string`` </li> </ul> |
 
 ### Event types
 
@@ -156,7 +162,7 @@ Object wraps an event that a user liked and contains following fields:
 | **subtype** <br> ``string``| "like". |
 | **is_commentable** <br> ``integer``| 0. |
 | **id** <br> ``string`` | Like ID. |
-| **is_likable** <br> ``integer``| 0. |
+| **is_likeable** <br> ``integer``| 0. |
 
 
 
@@ -173,7 +179,7 @@ Object wraps an event that a user commented and contains following fields:
 | **comment** <br> ``object`` | Object with following fields: <br> <ul> <li> **text** ``string`` - Text. </li> <li> **time** ``integer`` - Date (in Unixtime) of the comment. </li> <li> **is_deleted** ``integer`` - Shows if the comment deleted. </li> <li> **id** ``string`` - Comment ID. </li> <li> **author** ``object`` - Information about the user; see [User](#User). </li> <li> **text_media** ``object`` - Object with fields **object** ``string`` and **content** ``string``. </li> </ul> |
 | **is_commentable** <br> ``integer``| 0. |
 | **id** <br> ``string`` | Comment ID. |
-| **is_likable** <br> ``integer``| 0. |
+| **is_likeable** <br> ``integer``| 0. |
 
 
 
