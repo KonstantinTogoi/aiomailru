@@ -80,66 +80,66 @@ Object describes an event and contains following fields:
 
 ### Event types
 
-- 1-1 Photo
-- 1-2 Video
-- 1-3 Photo mark
-- 1-4 Video mark
-- 1-6 TYPE_PHOTO_WAS_SELECTED 
-- 1-7 Music 
-- 1-8 Photo comment
- - 1-9 TYPE_PHOTO_SUBSCRIPTION 
-- 1-10 Video comment
-- 1-11 TYPE_PHOTO_WAS_MODERATED
- - 1-12 TYPE_VIDEO_WAS_MODERATED
- - 1-13 TYPE_VIDEO_TRANSLATION 
-- 1-14 Private photo comment 
-- 1-15 Private video comment
- - 1-16 Music comment
-- 1-17 TYPE_PHOTO_NEW_COMMENT 
-- 1-18 TYPE_VIDEO_NEW_COMMENT 
-- 3-1 Blog post
-- 3-2 Blog post comment
- - 3-3 Join community
- - 3-4 Community
-- 3-5 TYPE_USER_COMMUNITY_LEAVE
- - 3-6 TYPE_BLOG_COMMUNITY_POST 
-- 3-7 TYPE_USER_GUESTBOOK 
-- 3-8 TYPE_BLOG_CHALLENGE_ACCEPT 
-- 3-9 TYPE_BLOG_CHALLENGE_THROW 
-- 3-10 TYPE_BLOG_SUBSCRIPTION 
-- 3-12 Blog post mark
-- 3-13 Community post mark
-- 3-23 Post in micro blog
- - 3-25 Private post in micro blog
-- 4-1 TYPE_QUESTION
- - 4-2 TYPE_QUESTION_ANSWER
- - 4-6 TYPE_QUESTION_ANSWER_PRIVATE 
-- 5-1 TYPE_USER_FRIEND
- - 5-2 TYPE_USER_ANKETA
- - 5-4 TYPE_USER_CLASSMATES
- - 5-5 TYPE_USER_CAREER
- - 5-7 TYPE_USER_AVATAR
- - 5-9 TYPE_USER_PARTNER 
-- 5-10 TYPE_GIFT_SENT 
-- 5-11 TYPE_GIFT_RECEIVED 
-- 5-12 TYPE_USER_MILITARY
- - 5-13 TYPE_USER_PARTNER_APPROVED
- - 5-15 TYPE_USER_ITEM
- - 5-16 App install
- - 5-17 App event
- - 5-18 Community post
-- 5-19 Post in community guestbook
-- 5-20 Join community
-- 5-21 Community video
- - 5-22 Community photo
-- 5-24 App event
-- 5-24 TYPE_APP_INFO
- - 5-26 Link share
-- 5-27 Event like
- - 5-29 Video share
- - 5-30 Comment to link share
- - 5-31 Comment to video share
- - 5-32 Micropost comment
+* 1-1 Photo
+* 1-2 Video
+* 1-3 Photo mark
+* 1-4 Video mark
+* 1-6 TYPE_PHOTO_WAS_SELECTED 
+* 1-7 Music 
+* 1-8 Photo comment
+* 1-9 TYPE_PHOTO_SUBSCRIPTION 
+* 1-10 Video comment
+* 1-11 TYPE_PHOTO_WAS_MODERATED
+* 1-12 TYPE_VIDEO_WAS_MODERATED
+* 1-13 TYPE_VIDEO_TRANSLATION 
+* 1-14 Private photo comment 
+* 1-15 Private video comment
+* 1-16 Music comment
+* 1-17 TYPE_PHOTO_NEW_COMMENT 
+* 1-18 TYPE_VIDEO_NEW_COMMENT 
+* 3-1 Blog post
+* 3-2 Blog post comment
+* 3-3 Join community
+* 3-4 Community
+* 3-5 TYPE_USER_COMMUNITY_LEAVE
+* 3-6 TYPE_BLOG_COMMUNITY_POST 
+* 3-7 TYPE_USER_GUESTBOOK 
+* 3-8 TYPE_BLOG_CHALLENGE_ACCEPT 
+* 3-9 TYPE_BLOG_CHALLENGE_THROW 
+* 3-10 TYPE_BLOG_SUBSCRIPTION 
+* 3-12 Blog post mark
+* 3-13 Community post mark
+* 3-23 Post in micro blog
+* 3-25 Private post in micro blog
+* 4-1 TYPE_QUESTION
+* 4-2 TYPE_QUESTION_ANSWER
+* 4-6 TYPE_QUESTION_ANSWER_PRIVATE 
+* 5-1 TYPE_USER_FRIEND
+* 5-2 TYPE_USER_ANKETA
+* 5-4 TYPE_USER_CLASSMATES
+* 5-5 TYPE_USER_CAREER
+* 5-7 TYPE_USER_AVATAR
+* 5-9 TYPE_USER_PARTNER 
+* 5-10 TYPE_GIFT_SENT 
+* 5-11 TYPE_GIFT_RECEIVED 
+* 5-12 TYPE_USER_MILITARY
+* 5-13 TYPE_USER_PARTNER_APPROVED
+* 5-15 TYPE_USER_ITEM
+* 5-16 App install
+* 5-17 App event
+* 5-18 Community post
+* 5-19 Post in community guestbook
+* 5-20 Join community
+* 5-21 Community video
+* 5-22 Community photo
+* 5-24 App event
+* 5-24 TYPE_APP_INFO
+* 5-26 Link share
+* 5-27 Event like
+* 5-29 Video share
+* 5-30 Comment to link share
+* 5-31 Comment to video share
+* 5-32 Micropost comment
 
 
 
