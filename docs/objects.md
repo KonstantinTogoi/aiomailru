@@ -72,7 +72,7 @@ Object describes an event and contains following fields:
 | **is_liked_by_me** <br> ``integer, [0,1]``| Shows if current user has liked the event. |
 | **subtype** <br> ``string``| "event". |
 | **is_commentable** <br> ``integer, [0,1]``| Shows if the event is commentable. |
-| **type** <br> ``string``| Event type; see [Event types](#Event types). |
+| **type** <br> ``string``| Event type; see [Event types](#event-types). |
 | **is_likeable** <br> ``integer, [0,1]``| Shows if the event is likeable. |
 | **id** <br> ``string`` | Event ID. |
 | **text_media** <br> ``array`` <br> Returns only if event's type name is *micropost*. | Information about text; see [Attachments](#Attachments). |
@@ -370,7 +370,7 @@ Object contains information about profile's cover.
 | **pid** <br> ``string`` |
 | **thread_id** <br> ``string`` |
 | **owner** <br> ``string`` |
-| **target_album** <br> ``object`` <br> Information about target album; see [Target Album](#Target Album). |
+| **target_album** <br> ``object`` <br> Information about target album; <br> see [Target Album](#target-album). |
 | **click_url** <br> ``string`` |
 | **src** <br> ``string`` |
 | **height** <br> ``string`` |
