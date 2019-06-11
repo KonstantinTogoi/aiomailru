@@ -20,11 +20,8 @@ class APIScraper(API):
         self.browser = None
         self.pages = {}
 
-    def __getattr__(self, method_name):
-        if method_name in scrapers:
-            return scrapers[method_name](self, method_name)
-        else:
-            return APIMethod(self, method_name)
+    def __getattr__(self, name):
+        return scrapers.get(name, APIMethod)(self, name)
 
 
 class APIScraperMethod(APIMethod):
@@ -32,13 +29,13 @@ class APIScraperMethod(APIMethod):
 
     name = ''
 
-    def __init__(self, api: APIScraper, method_name=''):
-        super().__init__(api, self.name or method_name)
+    def __init__(self, api: APIScraper, name=''):
+        super().__init__(api, self.name or name)
         self.api = api
 
-    def __getattr__(self, method_name):
-        method_name = self.name + '.' + method_name
-        return scrapers[method_name](self.api, method_name)
+    def __getattr__(self, name):
+        name = self.name + '.' + name
+        return scrapers.get(name, APIMethod)(self.api, name)
 
 
 class StreamGetByAuthor(APIScraperMethod):
@@ -82,11 +79,11 @@ class StreamGetByAuthor(APIScraperMethod):
             url (str): Stream URL.
             skip (str): Latest event ID to skip.
             limit (int): Number of events to return.
-            uuid (str): Unique identifier. May be used to prevent function
-                from returning result from cache.
+            uuid (str): Unique identifier. May be used to prevent
+                function from returning result from cache.
 
         Returns:
-            events (list): Stream events
+            events (list): Stream events.
 
         """
 

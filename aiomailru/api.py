@@ -11,11 +11,11 @@ class API:
     def __init__(self, session: TokenSession):
         self.session = session
 
-    def __getattr__(self, method_name):
-        return APIMethod(self, method_name)
+    def __getattr__(self, name):
+        return APIMethod(self, name)
 
-    async def __call__(self, method_name, **params):
-        return await getattr(self, method_name)(**params)
+    async def __call__(self, name, **params):
+        return await getattr(self, name)(**params)
 
 
 class APIMethod:
@@ -27,8 +27,8 @@ class APIMethod:
         self.api = api
         self.name = name
 
-    def __getattr__(self, method_name):
-        return APIMethod(self.api, self.name + '.' + method_name)
+    def __getattr__(self, name):
+        return APIMethod(self.api, self.name + '.' + name)
 
     async def __call__(self, **params):
         params = dict(params)
