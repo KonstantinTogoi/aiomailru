@@ -1,6 +1,7 @@
 """My.Mail.Ru scrapers."""
 
 import asyncio
+from concurrent.futures import FIRST_COMPLETED
 from functools import lru_cache
 from pyppeteer import launch
 from uuid import uuid4
@@ -43,7 +44,7 @@ class StreamGetByAuthor(APIScraperMethod):
 
     name = 'stream.getByAuthor'
 
-    scroll_js = 'window.scrollBy(0, document.body.scrollHeight)'
+    scroll_js = 'window.scroll(0, document.body.scrollHeight)'
 
     history_selector = '#history_root'
     history_state_js = 'n => n.getAttribute("data-state")'
@@ -51,12 +52,18 @@ class StreamGetByAuthor(APIScraperMethod):
     event_selector = 'div.b-history-event'
     events_js = '(nodes => nodes.map(node => node.outerHTML))'
 
-    history_state_xpath = '/html/body' \
-                          '/div[@id="boosterCanvas"]' \
-                          '/div/div/div[@class="b-user-main-page"]' \
-                          '/div[@class="b-user-main-page__feed"]' \
-                          '/div[@id="history_root"][@data-state]' \
-                          '[@data-state!="loading"]'
+    history_loaded_state = '/html/body' \
+                           '/div[@id="boosterCanvas"]' \
+                           '/div/div/div[@class="b-user-main-page"]' \
+                           '/div[@class="b-user-main-page__feed"]' \
+                           '/div[@id="history_root"][@data-state]' \
+                           '[@data-state!="loading"]'
+
+    history_loading_state = '/html/body' \
+                            '/div[@id="boosterCanvas"]' \
+                            '/div/div/div[@class="b-user-main-page"]' \
+                            '/div[@class="b-user-main-page__feed"]' \
+                            '/div[@id="history_root"][@data-state="loading"]'
 
     async def __call__(self, **params):
         uid = params['uid']
@@ -123,9 +130,9 @@ class StreamGetByAuthor(APIScraperMethod):
 
         history = await page.J(self.history_selector)
         history_ctx = history.executionContext
-        htmls = []
+        state, htmls = None, []
 
-        while True:
+        while state != 'noevents':
             offset = len(htmls)
             htmls = await history.JJeval(self.event_selector, self.events_js)
 
@@ -134,17 +141,19 @@ class StreamGetByAuthor(APIScraperMethod):
                 yield event
 
             await page.evaluate(self.scroll_js)
-            await asyncio.sleep(0.5)
-            await page.waitForXPath(self.history_state_xpath)
+
+            tasks = [
+                page.waitForXPath(self.history_loading_state),
+                page.waitForXPath(self.history_loaded_state),
+            ]
+
+            _, pending = await asyncio.wait(tasks, return_when=FIRST_COMPLETED)
+            for future in pending:
+                future.cancel()
 
             state = await history_ctx.evaluate(self.history_state_js, history)
-
-            if state == 'noevents':
-                break
-            elif state == 'loaded':
-                continue
-            else:
-                raise RuntimeError('Got unknown history state: "%s"' % state)
+            if state == 'loading':
+                await page.waitForXPath(self.history_loaded_state)
 
 
 scrapers = {
