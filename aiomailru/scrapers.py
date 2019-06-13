@@ -1,6 +1,7 @@
 """My.Mail.Ru scrapers."""
 
 import asyncio
+import logging
 from concurrent.futures import FIRST_COMPLETED
 from functools import lru_cache
 from pyppeteer import launch
@@ -9,6 +10,9 @@ from uuid import uuid4
 from .api import API, APIMethod
 from .objects.event import Event
 from .sessions import TokenSession
+
+
+log = logging.getLogger(__name__)
 
 
 class APIScraper(API):
@@ -119,10 +123,13 @@ class StreamGetByAuthor(APIScraperMethod):
         """
 
         if self.api.browser is None:
+            log.debug('launching browser..')
             self.api.browser = await launch()
 
         if url not in self.api.pages:
+            log.debug('creating new page..')
             page = await self.api.browser.newPage()
+            log.debug('go to %s' % url)
             await page.goto(url)
             self.api.pages[url] = page
         else:

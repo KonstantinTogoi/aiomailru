@@ -9,3 +9,7 @@ from .sessions import (
 )
 from .api import API
 from . import objects
+import logging
+
+
+logging.basicConfig()
