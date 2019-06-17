@@ -1,6 +1,7 @@
 import aiohttp
 import asyncio
 import hashlib
+from datetime import datetime
 from yarl import URL
 
 from aiomailru.exceptions import Error, AuthorizationError, APIError
@@ -70,6 +71,7 @@ class TokenSession(PublicSession):
 
     url = 'http://appsmail.ru/platform/api'
     error_msg = "See https://api.mail.ru/docs/guides/restapi/#sig."
+    expires_fmt = '%a, %d %b %Y %H:%M:%S GMT'
 
     __slots__ = 'app_id', 'private_key', 'secret_key', 'session_key', 'uid'
 
@@ -155,6 +157,37 @@ class TokenSession(PublicSession):
 
         return response
 
+    @property
+    def cookies(self):
+        """Cookies for Pyppeteer page."""
+
+        cookies = []
+
+        for morsel in self.session.cookie_jar:
+            if morsel['expires']:
+                expires = datetime.strptime(morsel['expires'], self.expires_fmt)
+            else:
+                expires = datetime.fromtimestamp(0)
+
+            if morsel['domain'].startswith('.'):
+                domain = morsel['domain']
+            else:
+                domain = '.' + morsel['domain']
+
+            cookies.append({
+                'name': morsel.key,
+                'value': morsel.value,
+                'domain': domain,
+                'path': morsel['path'],
+                'expires': expires.timestamp(),
+                'size': len(morsel.key) + len(morsel.value),
+                'httpOnly': True if morsel['httponly'] else False,
+                'secure': True if morsel['secure'] else False,
+                'session': False,
+            })
+
+        return cookies
+
 
 class ClientSession(TokenSession):
 
@@ -174,7 +207,7 @@ class ServerSession(TokenSession):
 
 class ImplicitSession(TokenSession):
 
-    auth_url = 'https://connect.mail.ru/oauth/authorize'
+    oauth_url = 'https://connect.mail.ru/oauth/authorize'
     redirect_uri = 'http%3A%2F%2Fconnect.mail.ru%2Foauth%2Fsuccess.html'
 
     __slots__ = ('email', 'passwd', 'scope',
@@ -220,7 +253,7 @@ class ImplicitSession(TokenSession):
     async def _get_auth_page(self):
         """Returns url and html code of authorization page."""
 
-        async with self.session.get(self.auth_url, params=self.params) as resp:
+        async with self.session.get(self.oauth_url, params=self.params) as resp:
             if resp.status != 200:
                 raise AuthorizationError("Wrong 'app_id' or 'scope'.")
             url, html = resp.url, await resp.text()
@@ -251,18 +284,16 @@ class ImplicitSession(TokenSession):
         form_data['Password'] = self.passwd
 
         async with self.session.post(form_url, data=form_data) as resp:
+            if resp.status != 200:
+                raise AuthorizationError("Failed to process authorization form")
             url, status, html = resp.url, resp.status, await resp.text()
-
-        if status != 200:
-            raise AuthorizationError("Failed to process authorization form")
 
         return url, html
 
     async def _get_auth_response(self):
-        async with self.session.get(self.auth_url, params=self.params,
-                                    allow_redirects=False) as resp:
-            url = URL(resp.headers['Location'])
-            url = URL('?' + url.fragment)
+        async with self.session.get(self.oauth_url, params=self.params) as resp:
+            location = URL(resp.history[-1].headers['Location'])
+            url = URL('?' + location.fragment)
 
         try:
             self.session_key = url.query['access_token']
