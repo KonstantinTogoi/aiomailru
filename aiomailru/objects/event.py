@@ -1,6 +1,5 @@
-import html.parser
 from collections import UserDict
-from datetime import datetime
+from pyppeteer.element_handle import ElementHandle
 
 
 class Event(UserDict):
@@ -10,67 +9,161 @@ class Event(UserDict):
         super().__init__(initialdata)
 
     def __repr__(self):
-        fmt = '%H:%M:%S %d.%m.%Y'
-        created_at = datetime.fromtimestamp(self['time']).strftime(fmt)
-        return '{subtype} with ID {id}. Created at {time}'.format(
-            subtype=self['subtype'],
-            id=self['id'],
-            time=created_at,
-        )
+        return repr(self.data)
+
+    astat_js = 'node => node.getAttribute("data-astat")'
+
+    url_js = 'node => node.getAttribute("href")'
+    url_selector = 'div.b-history-event_head ' \
+                   'div.b-history-event__action ' \
+                   'div.b-history-event_time a'
+
+    links_js = '''nodes => nodes.map(n => {
+        return { href: n.getAttribute("href"), text: n.innerText };
+    })'''
+    links_selector = 'a'
+
+    text_js = 'node => node.innerText'
+    text_selector = 'div.b-history-event__body ' \
+                    'div.b-history-event__event-textbox2'
+
+    status_js = 'node => node.innerText'
+    status_selector = 'div.b-history-event__body ' \
+                      'div.b-history-event__event-textbox_status'
+
+    event_class = '.b-history_event_active-area_shift'
+    subevent_class = '.b-history_event_active-area'
+    event_selector = 'div' + event_class
+    subevent_selector = 'div' + subevent_class + ':not(%s)' % event_class
+
+    comments_selector = 'div.b-comments__history'
 
     @classmethod
-    def from_html(cls, code: str):
-        parser = cls.Parser()
-        parser.feed(code)
-        event = cls(parser.fields)
-        return event
+    async def from_element(cls, element: ElementHandle):
+        ctx = element.executionContext
+        astat = await ctx.evaluate(cls.astat_js, element)
+        astat = Astat(*astat.split(':'))
+        comments = await element.J(cls.comments_selector)
 
-    class Parser(html.parser.HTMLParser):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.fields = {}
+        if astat.subtype in ['comment', 'like']:
+            event = {
+                'time': astat.time,
+                'author': {},  # fixed below
+                # TODO: scrape like/comment 'huid'
+                'subevent': {
+                    # TODO: scrape subevent 'thread_id'
+                    'authors': [],  # fixed below
+                    'type_name': astat.corr_type_name,
+                    # skip 'click_url', added below if present
+                    'likes_count': astat.likes_count,
+                    # skip 'attachments', added below if present
+                    # TODO: scrape subevent 'time'
+                    # TODO: scrape subevent 'huid'
+                    # TODO: scrape subevent 'generator'
+                    'user_text': '',  # fixed below if present
+                    # TODO: scrape subevent 'is_liked_by_me'
+                    'subtype': 'event',
+                    'is_commentable': 1 if comments else 0,
+                    'type': astat.corr_type,
+                    'is_likeable': 1 if comments else 0,
+                    'id': astat.corr_event_id,
+                    # skip 'text_media', added below if present
+                    'comments_count': astat.comments_count,
+                    # TODO: scrape subevent 'action_links'
+                },
+                'subtype': astat.subtype,
+                'is_commentable': 0,
+                'id': astat.id,
+                'is_likeable': 0,
+            }
 
-        def handle_starttag(self, tag, attrs):
-            fields = {}
-            attrs = dict(attrs)
-            classes = attrs.get('class', '').split()
+            element = await element.J(cls.subevent_selector)
+            element_type = astat.corr_type
+            element_body = await cls._from_element(element, element_type)
+            event['subevent'].update(element_body)
 
-            if attrs.get('data-astat'):
-                astat = Astat(*attrs['data-astat'].split(':'))
-                fields['id'] = astat.id
-                fields['time'] = astat.time
-                fields['type'] = astat.type
-                fields['subtype'] = astat.subtype
-                fields['type_name'] = astat.type_name
-                fields['likes_count'] = astat.likes_count
-                fields['comments_count'] = astat.comments_count
+        else:
+            event = {
+                # TODO: scrape event 'thread_id'
+                'authors': [],  # fixed below
+                'type_name': astat.type_name,
+                'click_url': '',  # fixed below if present
+                'likes_count': astat.likes_count,
+                # skip 'attachments', added below if present
+                'time': astat.time,
+                # TODO: scrape event 'huid'
+                # TODO: scape event 'generator'
+                'user_text': '',  # fixed below if present
+                # TODO: scrape event 'is_liked_by_me'
+                'subtype': astat.subtype,
+                'is_commentable': 1 if comments else 0,
+                'type': astat.type,
+                'is_likeable': 1 if comments else 0,
+                'id': astat.id,
+                # skip 'text_media', added below if present
+                'comments_count': astat.comments_count,
+                # TODO: scrape event 'action_links'
+            }
 
-            if 'event_links' in classes:
-                fields['is_likeable'] = 1
-                fields['is_commentable'] = 1
+            element = await element.J(cls.event_selector)
+            element_type = astat.type
+            element_body = await cls._from_element(element, element_type)
+            event.update(element_body)
 
-            if fields:
-                self.fields.update(fields)
+        return cls(event)
+
+    @classmethod
+    async def _from_element(cls, element: ElementHandle, element_type):
+        body = {}
+
+        # scrape 'click_url'
+
+        if element_type in ['3-23']:
+            url = await element.J(cls.url_selector)
+            ctx = url.executionContext
+            body['click_url'] = await ctx.evaluate(cls.url_js, url)
+
+        # scrape 'user_text'
+
+        if element_type in ['3-23']:
+            status = await element.J(cls.status_selector)
+            ctx = status.executionContext
+            text = await ctx.evaluate(cls.status_js, status)
+            links = await status.JJeval(cls.links_selector, cls.links_js)
+
+            for link in links:
+                text.replace(link['text'], link['href'])
+
+            body['user_text'] = text
+        else:
+            text = await element.J(cls.text_selector)
+            if text:
+                ctx = text.executionContext
+                body['user_text'] = await ctx.evaluate(cls.text_js, text)
+
+        return body
 
 
 class Astat:
     def __init__(self, user_world_id, event_type, event_id,
                  owner_world_id, corr_world_id, corr_event_id,
-                 likes_count, comments_count, event_time, _, region):
+                 likes_count, comments_count, event_time, *_):
         self.user_world_id = int(user_world_id or '0')
+
         self.event_type = event_type
         self.event_id = event_id
+        self.event_time = int(event_time)
         self.owner_world_id = owner_world_id
+
         self.corr_world_id = corr_world_id
         self.corr_event_id = corr_event_id
+
         self.likes_count = int(likes_count or '0')
         self.comments_count = int(comments_count or '0')
-        self.event_time = int(event_time)
-        self.region = int(region)
 
     @property
     def id(self):
-        return self.event_id
+        return self.event_id.lower()
 
     @property
     def time(self):
@@ -78,16 +171,35 @@ class Astat:
 
     @property
     def type(self):
-        return '-'.join(self.event_type.split('-')[:2])
+        """Event type."""
+        if self.subtype == 'event':
+            return '-'.join(self.event_type.split('-')[:2])
+        else:
+            raise AttributeError()
+
+    @property
+    def corr_type(self):
+        """Type of liked/commented subevent."""
+        if self.subtype == 'event':
+            raise AttributeError()
+        else:
+            return '-'.join(self.event_type.split('-')[:2])
 
     @property
     def type_name(self):
         return TYPE_NAMES.get(self.type, '')
 
     @property
+    def corr_type_name(self):
+        return TYPE_NAMES[self.corr_type]
+
+    @property
     def subtype(self):
-        subtype = '-'.join(self.event_type.split('-')[2:])
-        return subtype.lower() if subtype else 'event'
+        type_code = self.event_type.split('-')
+        if len(type_code) < 3:
+            return 'event'
+        else:
+            return type_code[2].lower()
 
 
 TYPE_NAMES = {

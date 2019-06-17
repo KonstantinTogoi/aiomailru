@@ -50,24 +50,19 @@ class StreamGetByAuthor(APIScraperMethod):
 
     scroll_js = 'window.scroll(0, document.body.scrollHeight)'
 
-    history_selector = '#history_root'
+    history_selector = 'div[data-mru-fragment="home/history"]'
     history_state_js = 'n => n.getAttribute("data-state")'
 
     event_selector = 'div.b-history-event'
-    events_js = '(nodes => nodes.map(node => node.outerHTML))'
 
-    history_loaded_state = '/html/body' \
-                           '/div[@id="boosterCanvas"]' \
-                           '/div/div/div[@class="b-user-main-page"]' \
-                           '/div[@class="b-user-main-page__feed"]' \
-                           '/div[@id="history_root"][@data-state]' \
+    history_loaded_state = '/html/body/div[@id="boosterCanvas"]' \
+                           '//div[@data-mru-fragment="home/history"]' \
+                           '[@data-state]' \
                            '[@data-state!="loading"]'
 
-    history_loading_state = '/html/body' \
-                            '/div[@id="boosterCanvas"]' \
-                            '/div/div/div[@class="b-user-main-page"]' \
-                            '/div[@class="b-user-main-page__feed"]' \
-                            '/div[@id="history_root"][@data-state="loading"]'
+    history_loading_state = '/html/body/div[@id="boosterCanvas"]' \
+                            '//div[@data-mru-fragment="home/history"]' \
+                            '[@data-state="loading"]'
 
     async def __call__(self, **params):
         uid = params['uid']
@@ -80,7 +75,7 @@ class StreamGetByAuthor(APIScraperMethod):
         if scrape:
             return await self.scrape(user['link'], skip, limit, uuid)
         else:
-            return super().__call__(**params)
+            return await super().__call__(uid=uid, skip=skip, limit=limit)
 
     @lru_cache(maxsize=None)
     async def scrape(self, url, skip, limit, uuid):
@@ -137,14 +132,14 @@ class StreamGetByAuthor(APIScraperMethod):
 
         history = await page.J(self.history_selector)
         history_ctx = history.executionContext
-        state, htmls = None, []
+        state, elements = None, []
 
         while state != 'noevents':
-            offset = len(htmls)
-            htmls = await history.JJeval(self.event_selector, self.events_js)
+            offset = len(elements)
+            elements = await history.JJ(self.event_selector)
 
-            for i in range(offset, len(htmls)):
-                event = Event.from_html(htmls[i])
+            for i in range(offset, len(elements)):
+                event = await Event.from_element(elements[i])
                 yield event
 
             await page.evaluate(self.scroll_js)
