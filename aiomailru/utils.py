@@ -65,26 +65,33 @@ class Cookie(dict):
 
         """
 
-        if morsel['expires']:
-            expires = datetime.strptime(morsel['expires'], cls.expires_fmt)
-        else:
-            expires = datetime.fromtimestamp(0)
+        domain = morsel['domain']
+        expires = morsel['expires']
+        path = morsel['path']
+        size = len(morsel.key) + len(morsel.value)
+        http_only = True if morsel['httponly'] else False
+        secure = True if morsel['secure'] else False
 
-        if morsel['domain'].startswith('.'):
-            domain = morsel['domain']
+        if expires:
+            session = False
+            expires = datetime.strptime(expires, cls.expires_fmt).timestamp()
         else:
-            domain = '.' + morsel['domain']
+            session = True
+            expires = None
+
+        if not domain.startswith('.'):
+            domain = '.' + domain
 
         cookie = cls({
             'name': morsel.key,
             'value': morsel.value,
             'domain': domain,
-            'path': morsel['path'],
-            'expires': expires.timestamp(),
-            'size': len(morsel.key) + len(morsel.value),
-            'httpOnly': True if morsel['httponly'] else False,
-            'secure': True if morsel['secure'] else False,
-            'session': False,
+            'path': path,
+            'expires': expires,
+            'size': size,
+            'httpOnly': http_only,
+            'secure': secure,
+            'session': session,
         })
 
         return cookie
