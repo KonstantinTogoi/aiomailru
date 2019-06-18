@@ -43,6 +43,29 @@ class APIScraperMethod(APIMethod):
         name = self.name + '.' + name
         return scrapers.get(name, APIMethod)(self.api, name)
 
+    async def get_page(self, url):
+        if self.api.browser is None:
+            log.debug('launching browser..')
+            self.api.browser = await launch()
+
+        if url not in self.api.pages:
+            log.debug('creating new page..')
+            page = await self.api.browser.newPage()
+            await page.setViewport({'width': 1920,  'height': 1200})
+
+            if self.api.cookies:
+                log.debug('setting cookies..')
+                await page.setCookie(*self.api.cookies)
+
+            log.debug('go to %s..' % url)
+            await page.goto(url)
+
+            self.api.pages[url] = page
+        else:
+            page = self.api.pages[url]
+
+        return page
+
 
 class StreamGetByAuthor(APIScraperMethod):
     """Returns a list of events from user or community stream by their IDs."""
@@ -118,20 +141,7 @@ class StreamGetByAuthor(APIScraperMethod):
 
         """
 
-        if self.api.browser is None:
-            log.debug('launching browser..')
-            self.api.browser = await launch()
-
-        if url not in self.api.pages:
-            log.debug('creating new page..')
-            page = await self.api.browser.newPage()
-            await page.setCookie(*self.api.cookies)
-            log.debug('go to %s' % url)
-            await page.goto(url)
-            self.api.pages[url] = page
-        else:
-            page = self.api.pages[url]
-            await page.setCookie(*self.api.cookies)
+        page = await self.get_page(url)
 
         history = await page.J(self.history_selector)
         history_ctx = history.executionContext
@@ -153,6 +163,11 @@ class StreamGetByAuthor(APIScraperMethod):
             ]
 
             _, pending = await asyncio.wait(tasks, return_when=FIRST_COMPLETED)
+
+            for task in tasks:
+                if not task.promise.done():
+                    task.cancel()
+
             for future in pending:
                 future.cancel()
 
