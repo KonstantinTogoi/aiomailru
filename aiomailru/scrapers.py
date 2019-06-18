@@ -18,12 +18,13 @@ log = logging.getLogger(__name__)
 class APIScraper(API):
     """API scraper."""
 
-    __slots__ = ('browser', 'pages', )
+    __slots__ = ('browser', 'pages', 'cookies')
 
-    def __init__(self, session: TokenSession):
+    def __init__(self, session: TokenSession, cookies: tuple = ()):
         super().__init__(session)
         self.browser = None
         self.pages = {}
+        self.cookies = cookies
 
     def __getattr__(self, name):
         return scrapers.get(name, APIMethod)(self, name)
@@ -124,11 +125,13 @@ class StreamGetByAuthor(APIScraperMethod):
         if url not in self.api.pages:
             log.debug('creating new page..')
             page = await self.api.browser.newPage()
+            await page.setCookie(*self.api.cookies)
             log.debug('go to %s' % url)
             await page.goto(url)
             self.api.pages[url] = page
         else:
             page = self.api.pages[url]
+            await page.setCookie(*self.api.cookies)
 
         history = await page.J(self.history_selector)
         history_ctx = history.executionContext
