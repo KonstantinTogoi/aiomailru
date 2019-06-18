@@ -1,12 +1,11 @@
 import aiohttp
 import asyncio
 import hashlib
-from datetime import datetime
 from yarl import URL
 
-from aiomailru.exceptions import Error, AuthorizationError, APIError
-from aiomailru.parser import AuthPageParser
-from aiomailru.utils import full_scope, parseaddr, SignatureCircuit
+from .exceptions import Error, AuthorizationError, APIError
+from .parser import AuthPageParser
+from .utils import full_scope, parseaddr, SignatureCircuit, Cookie
 
 
 class Session:
@@ -71,7 +70,6 @@ class TokenSession(PublicSession):
 
     url = 'http://appsmail.ru/platform/api'
     error_msg = "See https://api.mail.ru/docs/guides/restapi/#sig."
-    expires_fmt = '%a, %d %b %Y %H:%M:%S GMT'
 
     __slots__ = 'app_id', 'private_key', 'secret_key', 'session_key', 'uid'
 
@@ -83,6 +81,11 @@ class TokenSession(PublicSession):
         self.secret_key = secret_key
         self.session_key = access_token
         self.uid = uid
+
+    @property
+    def cookies(self):
+        """HTTP cookies from cookie jar."""
+        return [Cookie.from_morsel(m) for m in self.session.cookie_jar]
 
     @property
     def sig_circuit(self):
@@ -156,37 +159,6 @@ class TokenSession(PublicSession):
             raise APIError(response['error'])
 
         return response
-
-    @property
-    def cookies(self):
-        """Cookies for Pyppeteer page."""
-
-        cookies = []
-
-        for morsel in self.session.cookie_jar:
-            if morsel['expires']:
-                expires = datetime.strptime(morsel['expires'], self.expires_fmt)
-            else:
-                expires = datetime.fromtimestamp(0)
-
-            if morsel['domain'].startswith('.'):
-                domain = morsel['domain']
-            else:
-                domain = '.' + morsel['domain']
-
-            cookies.append({
-                'name': morsel.key,
-                'value': morsel.value,
-                'domain': domain,
-                'path': morsel['path'],
-                'expires': expires.timestamp(),
-                'size': len(morsel.key) + len(morsel.value),
-                'httpOnly': True if morsel['httponly'] else False,
-                'secure': True if morsel['secure'] else False,
-                'session': False,
-            })
-
-        return cookies
 
 
 class ClientSession(TokenSession):
