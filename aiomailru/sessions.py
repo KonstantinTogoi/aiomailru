@@ -71,21 +71,20 @@ class TokenSession(PublicSession):
     url = 'http://appsmail.ru/platform/api'
     error_msg = "See https://api.mail.ru/docs/guides/restapi/#sig."
 
-    __slots__ = 'app_id', 'private_key', 'secret_key', 'session_key', 'uid'
+    __slots__ = (
+        'app_id', 'private_key', 'secret_key',
+        'session_key', 'uid', 'cookies',
+    )
 
     def __init__(self, app_id, private_key, secret_key,
-                 access_token, uid, session=None):
+                 access_token, uid, session=None, cookies=()):
         super().__init__(session)
         self.app_id = app_id
         self.private_key = private_key
         self.secret_key = secret_key
         self.session_key = access_token
         self.uid = uid
-
-    @property
-    def cookies(self):
-        """HTTP cookies from cookie jar."""
-        return [Cookie.from_morsel(m) for m in self.session.cookie_jar]
+        self.cookies = cookies
 
     @property
     def sig_circuit(self):
@@ -165,16 +164,20 @@ class ClientSession(TokenSession):
 
     error_msg = "Pass 'uid' and 'private_key' to use client-server circuit."
 
-    def __init__(self, app_id, private_key, access_token, uid, session=None):
-        super().__init__(app_id, private_key, '', access_token, uid, session)
+    def __init__(self, app_id, private_key, access_token, uid,
+                 session=None, cookies=()):
+        super().__init__(app_id, private_key, '',
+                         access_token, uid, session, cookies)
 
 
 class ServerSession(TokenSession):
 
     error_msg = "Pass 'secret_key' to use server-server circuit."
 
-    def __init__(self, app_id, secret_key, access_token, session=None):
-        super().__init__(app_id, '', secret_key, access_token, '', session)
+    def __init__(self, app_id, secret_key, access_token,
+                 session=None, cookies=()):
+        super().__init__(app_id, '', secret_key,
+                         access_token, '', session, cookies)
 
 
 class ImplicitSession(TokenSession):
@@ -191,6 +194,11 @@ class ImplicitSession(TokenSession):
         self.email = email
         self.passwd = passwd
         self.scope = scope or full_scope()
+
+    @property
+    def cookies(self):
+        """HTTP cookies from cookie jar."""
+        return [Cookie.from_morsel(m) for m in self.session.cookie_jar]
 
     @property
     def params(self):
