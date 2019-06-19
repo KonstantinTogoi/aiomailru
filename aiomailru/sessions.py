@@ -167,7 +167,7 @@ class ClientSession(TokenSession):
     def __init__(self, app_id, private_key, access_token, uid,
                  cookies=(), session=None):
         super().__init__(app_id, private_key, '',
-                         access_token, uid, session, cookies)
+                         access_token, uid, cookies, session)
 
 
 class ServerSession(TokenSession):
@@ -177,7 +177,7 @@ class ServerSession(TokenSession):
     def __init__(self, app_id, secret_key, access_token,
                  cookies=(), session=None):
         super().__init__(app_id, '', secret_key,
-                         access_token, '', session, cookies)
+                         access_token, '', cookies, session)
 
 
 class ImplicitSession(TokenSession):
