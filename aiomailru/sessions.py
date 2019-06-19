@@ -77,7 +77,7 @@ class TokenSession(PublicSession):
     )
 
     def __init__(self, app_id, private_key, secret_key,
-                 access_token, uid, session=None, cookies=()):
+                 access_token, uid, cookies=(), session=None):
         super().__init__(session)
         self.app_id = app_id
         self.private_key = private_key
@@ -165,7 +165,7 @@ class ClientSession(TokenSession):
     error_msg = "Pass 'uid' and 'private_key' to use client-server circuit."
 
     def __init__(self, app_id, private_key, access_token, uid,
-                 session=None, cookies=()):
+                 cookies=(), session=None):
         super().__init__(app_id, private_key, '',
                          access_token, uid, session, cookies)
 
@@ -175,7 +175,7 @@ class ServerSession(TokenSession):
     error_msg = "Pass 'secret_key' to use server-server circuit."
 
     def __init__(self, app_id, secret_key, access_token,
-                 session=None, cookies=()):
+                 cookies=(), session=None):
         super().__init__(app_id, '', secret_key,
                          access_token, '', session, cookies)
 
