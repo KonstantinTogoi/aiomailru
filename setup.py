@@ -18,7 +18,7 @@ setup(
     description='Platform@Mail.ru Python REST API wrapper',
     long_description=read('README.rst'),
     license='BSD',
-    packages=['aiomailru'],
+    packages=['aiomailru', 'aiomailru.objects'],
     install_requires='aiohttp>=3.0.0',
     extra_require={
         'scrapers': ['pyppeteer<=0.0.25'],
