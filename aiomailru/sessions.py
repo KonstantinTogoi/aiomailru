@@ -127,7 +127,7 @@ class TokenSession(PublicSession):
         sig = hashlib.md5(query.encode('UTF-8')).hexdigest()
         return sig
 
-    async def request(self, path=(), params=None):
+    async def request(self, path=(), params=()):
         """Sends an authorized request.
 
         Args:
@@ -146,7 +146,8 @@ class TokenSession(PublicSession):
 
         url = '/'.join((self.url, *path))
 
-        params = dict(params or {})
+        params = dict(params)
+        params = {k: params[k] for k in params if params[k] is not None}
         params.update(self.basic_params)
         params.update({'sig': self.sign_params(params)})
 
