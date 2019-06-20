@@ -18,13 +18,12 @@ log = logging.getLogger(__name__)
 class APIScraper(API):
     """API scraper."""
 
-    __slots__ = ('browser', 'pages', 'cookies')
+    __slots__ = ('browser', 'pages')
 
-    def __init__(self, session: TokenSession, cookies: tuple = ()):
+    def __init__(self, session: TokenSession):
         super().__init__(session)
         self.browser = None
         self.pages = {}
-        self.cookies = cookies
 
     def __getattr__(self, name):
         return scrapers.get(name, APIMethod)(self, name)
@@ -53,11 +52,12 @@ class APIScraperMethod(APIMethod):
             page = await self.api.browser.newPage()
             await page.setViewport({'width': 1920,  'height': 1200})
 
-            if self.api.cookies:
+            cookies = self.api.session.cookies
+            if cookies:
                 log.debug('setting cookies..')
-                await page.setCookie(*self.api.cookies)
+                await page.setCookie(*cookies)
 
-            log.debug('go to %s..' % url)
+            log.debug('go to %s ..' % url)
             await page.goto(url)
 
             self.api.pages[url] = page
@@ -89,17 +89,18 @@ class StreamGetByAuthor(APIScraperMethod):
                             '[@data-state="loading"]'
 
     async def __call__(self, **params):
-        uid = params['uid']
-        skip = params.get('skip')
-        scrape = params.get('scrape')
-        limit = params.get('limit', 10)
-        uuid = skip if skip else uuid4().hex
-        user = (await self.api.users.getInfo(uids=str(uid)))[0]
+        scrape = params.pop('scrape') if 'scrape' in params else False
 
         if scrape:
+            uid = params.get('uid')
+            uid = uid if uid is None else str(uid)
+            skip = params.get('skip')
+            limit = params.get('limit')
+            uuid = skip if skip else uuid4().hex
+            user = (await self.api.users.getInfo(uids=uid))[0]
             return await self.scrape(user['link'], skip, limit, uuid)
         else:
-            return await super().__call__(uid=uid, skip=skip, limit=limit)
+            return await super().__call__(**params)
 
     @lru_cache(maxsize=None)
     async def scrape(self, url, skip, limit, uuid):
