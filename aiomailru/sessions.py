@@ -3,9 +3,9 @@ import asyncio
 import hashlib
 from yarl import URL
 
-from aiomailru.exceptions import Error, AuthorizationError, APIError
-from aiomailru.parser import AuthPageParser
-from aiomailru.utils import full_scope, parseaddr, SignatureCircuit
+from .exceptions import Error, AuthorizationError, APIError
+from .parser import AuthPageParser
+from .utils import full_scope, parseaddr, SignatureCircuit, Cookie
 
 
 class Session:
@@ -71,16 +71,20 @@ class TokenSession(PublicSession):
     url = 'http://appsmail.ru/platform/api'
     error_msg = "See https://api.mail.ru/docs/guides/restapi/#sig."
 
-    __slots__ = 'app_id', 'private_key', 'secret_key', 'session_key', 'uid'
+    __slots__ = (
+        'app_id', 'private_key', 'secret_key',
+        'session_key', 'uid', 'cookies',
+    )
 
     def __init__(self, app_id, private_key, secret_key,
-                 access_token, uid, session=None):
+                 access_token, uid, cookies=(), session=None):
         super().__init__(session)
         self.app_id = app_id
         self.private_key = private_key
         self.secret_key = secret_key
         self.session_key = access_token
         self.uid = uid
+        self.cookies = cookies
 
     @property
     def sig_circuit(self):
@@ -123,7 +127,7 @@ class TokenSession(PublicSession):
         sig = hashlib.md5(query.encode('UTF-8')).hexdigest()
         return sig
 
-    async def request(self, path=(), params=None):
+    async def request(self, path=(), params=()):
         """Sends an authorized request.
 
         Args:
@@ -142,7 +146,8 @@ class TokenSession(PublicSession):
 
         url = '/'.join((self.url, *path))
 
-        params = dict(params or {})
+        params = dict(params)
+        params = {k: params[k] for k in params if params[k] is not None}
         params.update(self.basic_params)
         params.update({'sig': self.sign_params(params)})
 
@@ -160,21 +165,25 @@ class ClientSession(TokenSession):
 
     error_msg = "Pass 'uid' and 'private_key' to use client-server circuit."
 
-    def __init__(self, app_id, private_key, access_token, uid, session=None):
-        super().__init__(app_id, private_key, '', access_token, uid, session)
+    def __init__(self, app_id, private_key, access_token, uid,
+                 cookies=(), session=None):
+        super().__init__(app_id, private_key, '',
+                         access_token, uid, cookies, session)
 
 
 class ServerSession(TokenSession):
 
     error_msg = "Pass 'secret_key' to use server-server circuit."
 
-    def __init__(self, app_id, secret_key, access_token, session=None):
-        super().__init__(app_id, '', secret_key, access_token, '', session)
+    def __init__(self, app_id, secret_key, access_token,
+                 cookies=(), session=None):
+        super().__init__(app_id, '', secret_key,
+                         access_token, '', cookies, session)
 
 
 class ImplicitSession(TokenSession):
 
-    auth_url = 'https://connect.mail.ru/oauth/authorize'
+    oauth_url = 'https://connect.mail.ru/oauth/authorize'
     redirect_uri = 'http%3A%2F%2Fconnect.mail.ru%2Foauth%2Fsuccess.html'
 
     __slots__ = ('email', 'passwd', 'scope',
@@ -186,6 +195,11 @@ class ImplicitSession(TokenSession):
         self.email = email
         self.passwd = passwd
         self.scope = scope or full_scope()
+
+    @property
+    def cookies(self):
+        """HTTP cookies from cookie jar."""
+        return [Cookie.from_morsel(m) for m in self.session.cookie_jar]
 
     @property
     def params(self):
@@ -220,7 +234,7 @@ class ImplicitSession(TokenSession):
     async def _get_auth_page(self):
         """Returns url and html code of authorization page."""
 
-        async with self.session.get(self.auth_url, params=self.params) as resp:
+        async with self.session.get(self.oauth_url, params=self.params) as resp:
             if resp.status != 200:
                 raise AuthorizationError("Wrong 'app_id' or 'scope'.")
             url, html = resp.url, await resp.text()
@@ -251,18 +265,16 @@ class ImplicitSession(TokenSession):
         form_data['Password'] = self.passwd
 
         async with self.session.post(form_url, data=form_data) as resp:
+            if resp.status != 200:
+                raise AuthorizationError("Failed to process authorization form")
             url, status, html = resp.url, resp.status, await resp.text()
-
-        if status != 200:
-            raise AuthorizationError("Failed to process authorization form")
 
         return url, html
 
     async def _get_auth_response(self):
-        async with self.session.get(self.auth_url, params=self.params,
-                                    allow_redirects=False) as resp:
-            url = URL(resp.headers['Location'])
-            url = URL('?' + url.fragment)
+        async with self.session.get(self.oauth_url, params=self.params) as resp:
+            location = URL(resp.history[-1].headers['Location'])
+            url = URL('?' + location.fragment)
 
         try:
             self.session_key = url.query['access_token']

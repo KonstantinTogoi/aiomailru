@@ -1,3 +1,5 @@
+from . import api, exceptions, objects, parser, sessions, utils
+
 from .utils import parseaddr
 from .exceptions import Error, AuthorizationError, APIError
 from .sessions import (
@@ -8,7 +10,6 @@ from .sessions import (
     ImplicitServerSession,
 )
 from .api import API
-from . import objects
 import logging
 
 
