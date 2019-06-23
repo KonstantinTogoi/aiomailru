@@ -5,27 +5,23 @@ import logging
 import os
 from concurrent.futures import FIRST_COMPLETED
 from functools import lru_cache
-from pyppeteer import connect, launch
 from uuid import uuid4
 
-from .api import API, APIMethod
+from .api import APIMethod
+from .browser import Browser
 from .objects.event import Event
 from .sessions import TokenSession
 
 
 log = logging.getLogger(__name__)
-browser_endpoint = os.environ.get('PYPPETEER_BROWSER_ENDPOINT')
-browser_conn = {'browserWSEndpoint': browser_endpoint}
+endpoint = os.environ.get('PYPPETEER_BROWSER_ENDPOINT')
 
 
-class APIScraper(API):
+class APIScraper(Browser):
     """API scraper."""
 
-    __slots__ = ('browser', )
-
-    def __init__(self, session: TokenSession):
-        super().__init__(session)
-        self.browser = None
+    def __init__(self, session: TokenSession, browser=None):
+        super().__init__(session, browser)
 
     def __getattr__(self, name):
         return scrapers.get(name, APIMethod)(self, name)
@@ -38,49 +34,16 @@ class APIScraperMethod(APIMethod):
 
     def __init__(self, api: APIScraper, name=''):
         super().__init__(api, self.name or name)
-        self.api = api
+        self.api: APIScraper
 
     def __getattr__(self, name):
         name = self.name + '.' + name
         return scrapers.get(name, APIMethod)(self.api, name)
 
-    async def browser(self):
-        if self.api.browser is not None:
-            return self.api.browser
-        elif browser_endpoint is None:
-            log.debug('launching new browser..')
-            browser = await launch()
-        else:
-            log.debug('connecting to browser: {}'.format(browser_endpoint))
-            browser = await connect(browser_conn)
-
-        self.api.browser = browser
-        return self.api.browser
-
-    async def page(self, url):
-        browser = await self.browser()
-        pages = await browser.pages()
-        blank_page = None
-
-        for page in pages:
-            if page.url == 'about:blank':
-                blank_page = page
-            if page.url == url:
-                break
-        else:
-            log.debug('creating new page..')
-            page = blank_page or await browser.newPage()
-            await page.setViewport({'width': 1920,  'height': 1200})
-            cookies = self.api.session.cookies
-
-            if cookies:
-                log.debug('setting cookies..')
-                await page.setCookie(*cookies)
-
-            log.debug('go to %s ..' % url)
-            await page.goto(url)
-
-        return page
+    def __call__(self, **params):
+        if 'scrape' in params:
+            params.pop('scrape')
+        return await super().__call__(**params)
 
 
 class StreamGetByAuthor(APIScraperMethod):
@@ -105,13 +68,11 @@ class StreamGetByAuthor(APIScraperMethod):
                             '[@data-state="loading"]'
 
     async def __call__(self, **params):
-        scrape = params.pop('scrape') if 'scrape' in params else False
-
-        if scrape:
+        if params.get('scrape'):
             uid = params.get('uid')
-            uid = uid if uid is None else str(uid)
             skip = params.get('skip')
             limit = params.get('limit')
+            uid = uid if uid is None else str(uid)
             uuid = skip if skip else uuid4().hex
             user = (await self.api.users.getInfo(uids=uid))[0]
             return await self.scrape(user['link'], skip, limit, uuid)
@@ -158,7 +119,7 @@ class StreamGetByAuthor(APIScraperMethod):
 
         """
 
-        page = await self.page(url)
+        page = await self.api.page(url)
 
         history = await page.J(self.history_selector)
         history_ctx = history.executionContext
