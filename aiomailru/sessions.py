@@ -71,10 +71,7 @@ class TokenSession(PublicSession):
     url = 'http://appsmail.ru/platform/api'
     error_msg = "See https://api.mail.ru/docs/guides/restapi/#sig."
 
-    __slots__ = (
-        'app_id', 'private_key', 'secret_key',
-        'session_key', 'uid', 'cookies',
-    )
+    __slots__ = ('app_id', 'private_key', 'secret_key', 'session_key', 'uid')
 
     def __init__(self, app_id, private_key, secret_key,
                  access_token, uid, cookies=(), session=None):
@@ -85,6 +82,21 @@ class TokenSession(PublicSession):
         self.session_key = access_token
         self.uid = uid
         self.cookies = cookies
+
+    @property
+    def cookies(self):
+        """HTTP cookies from cookie jar."""
+        return [Cookie.from_morsel(m) for m in self.session.cookie_jar]
+
+    @cookies.setter
+    def cookies(self, cookies):
+        loose_cookies = []
+
+        for cookie in cookies:
+            loose_cookie = Cookie.to_morsel(cookie)
+            loose_cookies.append((loose_cookies.key, loose_cookie))
+
+        self.session.cookie_jar.update_cookies(loose_cookies)
 
     @property
     def sig_circuit(self):
@@ -191,15 +203,10 @@ class ImplicitSession(TokenSession):
 
     def __init__(self, app_id, private_key, secret_key,
                  email, passwd, scope, session=None):
-        super().__init__(app_id, private_key, secret_key, '', '', session)
+        super().__init__(app_id, private_key, secret_key, '', '', (), session)
         self.email = email
         self.passwd = passwd
         self.scope = scope or full_scope()
-
-    @property
-    def cookies(self):
-        """HTTP cookies from cookie jar."""
-        return [Cookie.from_morsel(m) for m in self.session.cookie_jar]
 
     @property
     def params(self):
