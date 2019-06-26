@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import os
 from concurrent.futures import FIRST_COMPLETED
 from functools import lru_cache
 from uuid import uuid4
@@ -14,7 +13,6 @@ from .sessions import TokenSession
 
 
 log = logging.getLogger(__name__)
-endpoint = os.environ.get('PYPPETEER_BROWSER_ENDPOINT')
 
 
 class APIScraper(Browser):
@@ -40,7 +38,7 @@ class APIScraperMethod(APIMethod):
         name = self.name + '.' + name
         return scrapers.get(name, APIMethod)(self.api, name)
 
-    def __call__(self, **params):
+    async def __call__(self, **params):
         if 'scrape' in params:
             params.pop('scrape')
         return await super().__call__(**params)
