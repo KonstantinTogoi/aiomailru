@@ -43,14 +43,13 @@ class Browser(API):
         for page in await self.browser.pages():
             if page.url == 'about:blank':
                 blank_page = page
-            if page.url == url:
+            elif page.url == url:
                 break
         else:
-            log.debug('creating new page..')
             page = blank_page or await self.browser.newPage()
             await page.setViewport({'width': 1200,  'height': 1920})
-            cookies = self.session.cookies
 
+            cookies = self.session.cookies
             if cookies:
                 log.debug('setting cookies..')
                 await page.setCookie(*cookies)

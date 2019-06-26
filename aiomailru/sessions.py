@@ -94,7 +94,7 @@ class TokenSession(PublicSession):
 
         for cookie in cookies:
             loose_cookie = Cookie.to_morsel(cookie)
-            loose_cookies.append((loose_cookies.key, loose_cookie))
+            loose_cookies.append((loose_cookie.key, loose_cookie))
 
         self.session.cookie_jar.update_cookies(loose_cookies)
 
