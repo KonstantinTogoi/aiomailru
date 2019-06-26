@@ -112,7 +112,13 @@ class Cookie(dict):
         morsel = Morsel()
         morsel.set(cookie['name'], cookie['value'], cookie['value'])
 
-        morsel['expires'] = cookie['expires']
+        if cookie['expires']:
+            dt = datetime.fromtimestamp(cookie['expires'])
+            expires = dt.strftime(cls.expires_fmt)
+        else:
+            expires = None
+
+        morsel['expires'] = expires
         morsel['path'] = cookie['path']
         morsel['domain'] = cookie['domain']
         morsel['secure'] = cookie['secure']
