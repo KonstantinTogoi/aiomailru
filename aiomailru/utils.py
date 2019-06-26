@@ -1,6 +1,7 @@
 import re
 from datetime import datetime
 from enum import Enum
+from http.cookies import Morsel
 
 EMAIL_PATTERN = r"(^[a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+)\.([a-zA-Z0-9-.]+$)"
 PRIVILEGES = ['photos', 'guestbook', 'stream', 'messages', 'events']
@@ -95,3 +96,26 @@ class Cookie(dict):
         })
 
         return cookie
+
+    @classmethod
+    def to_morsel(cls, cookie):
+        """Converts a dictionary to cookie morsel.
+
+        Args:
+            cookie (dict): cookie from the browser.
+
+        Returns:
+            morsel (http.cookies.Morsel): cookie morsel
+
+        """
+
+        morsel = Morsel()
+        morsel.set(cookie['name'], cookie['value'], cookie['value'])
+
+        morsel['expires'] = cookie['expires']
+        morsel['path'] = cookie['path']
+        morsel['domain'] = cookie['domain']
+        morsel['secure'] = cookie['secure']
+        morsel['httponly'] = cookie['httpOnly']
+
+        return morsel
