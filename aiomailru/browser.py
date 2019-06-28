@@ -23,6 +23,8 @@ class Browser(API):
         return self.start().__await__()
 
     async def start(self):
+        """Starts chrome process or connects to the existing chrome."""
+
         if self.browser:
             pass
         elif self.endpoint:
@@ -35,7 +37,19 @@ class Browser(API):
 
         return self
 
-    async def page(self, url):
+    async def page(self, url, force=False):
+        """Makes new page and returns its object.
+
+        Args:
+            url (str): URL to navigate page to. The url should
+                include scheme, e.g. `https://`.
+            force (bool): `True` - to always return a new page.
+
+        Returns:
+            page (pyppeteer.page.Page): page.
+
+        """
+
         if not self.browser:
             await self.start()
 
@@ -43,6 +57,8 @@ class Browser(API):
         for page in await self.browser.pages():
             if page.url == 'about:blank':
                 blank_page = page
+            elif force:
+                continue
             elif page.url == url:
                 break
         else:
