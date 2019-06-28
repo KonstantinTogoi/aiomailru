@@ -13,4 +13,19 @@ class APIError(Error):
         self.msg = error['error_msg']
 
     def __str__(self):
-        return "ERROR %d: %s" % (self.code, self.msg)
+        return 'ERROR {code}: {msg}'.format(code=self.code, msg=self.msg)
+
+
+class APIScrapperError(Error):
+    code = 0
+
+    def __init__(self, msg):
+        super().__init__(msg)
+        self.msg = msg
+
+    def __str__(self):
+        return 'ERROR {code}: {msg}'.format(code=self.code, msg=self.msg)
+
+
+class CookieError(APIScrapperError):
+    code = 1
