@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from .api import APIMethod
 from .browser import Browser
-from .objects.event import Event
+from .objects import Event, GroupItem
 from .sessions import TokenSession
 
 
@@ -32,7 +32,6 @@ class APIScraperMethod(APIMethod):
 
     def __init__(self, api: APIScraper, name=''):
         super().__init__(api, self.name or name)
-        self.api: APIScraper
 
     def __getattr__(self, name):
         name = self.name + '.' + name
@@ -42,6 +41,74 @@ class APIScraperMethod(APIMethod):
         if 'scrape' in params:
             params.pop('scrape')
         return await super().__call__(**params)
+
+
+class GroupsGet(APIScraperMethod):
+    """Returns a list of the communities to which the current user belongs."""
+
+    name = 'groups.get'
+    url = 'https://my.mail.ru/my/communities'
+
+    class S:
+        """Scripts."""
+
+        class S:
+            """Selectors."""
+
+            content = (
+                'html body '
+                'div.l-content '
+                'div.l-content__center '
+                'div.l-content__center__inner '
+                'div.groups-catalog '
+                'div.groups-catalog__mine-groups '
+                'div.groups-catalog__small-groups '
+            )
+            catalog = f'{content} div.groups__container'
+            groups = f'{catalog} div.groups__item'
+            bar = f'{content} div.groups-catalog__groups-more'
+            button = f'{bar} span.ui-button-gray'
+
+        click = f'document.querySelector("{S.button}").click()'
+        bar_css = 'n => n.getAttribute("style")'
+        loaded = f'document.querySelectorAll("{S.groups}").length > {{}}'
+
+    s = S
+    ss = S.S
+
+    async def __call__(self, **params):
+        if params.get('scrape'):
+            offset = params.get('offset', 0)
+            limit = params.get('limit', 5)
+            page = await self.api.page(self.url, force=True)
+            groups = []
+            return await self.scrape(page, groups, offset, limit)
+        else:
+            return await super().__call__(**params)
+
+    async def scrape(self, page, groups, offset, limit):
+        """Appends groups from the `page` to the `groups` list."""
+
+        _ = await page.screenshot()
+        catalog = await page.J(self.ss.catalog)
+        elements = await catalog.JJ(self.ss.groups)
+
+        start, stop = offset, min(offset + limit, len(elements))
+        limit -= stop - start
+
+        for i in range(start, stop):
+            item = await GroupItem.from_element(elements[i])
+            groups.append(item)
+
+        bar = await page.J(self.ss.bar)
+        css = await page.Jeval(self.ss.bar, self.s.bar_css) or '' if bar else ''
+
+        if limit == 0 or 'display: none;' in css:
+            return groups
+        else:
+            await page.evaluate(self.s.click)
+            await page.waitForFunction(self.s.loaded.format(len(groups)))
+            return await self.scrape(page, groups, len(elements), limit)
 
 
 class StreamGetByAuthor(APIScraperMethod):
@@ -155,5 +222,7 @@ class StreamGetByAuthor(APIScraperMethod):
 
 scrapers = {
     'stream': APIScraperMethod,
+    'groups': APIScraperMethod,
+    GroupsGet.name: GroupsGet,
     StreamGetByAuthor.name: StreamGetByAuthor,
 }
