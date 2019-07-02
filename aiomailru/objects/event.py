@@ -1,9 +1,49 @@
 from collections import UserDict
-from pyppeteer.element_handle import ElementHandle
 
 
 class Event(UserDict):
-    """Event class."""
+    """Event."""
+
+    class S:
+        """Scripts."""
+
+        class S:
+            """Selectors."""
+
+            author = (
+                'div.b-history-event_head '
+                'div.b-history-event__action '
+            )
+            url = f'{author} div.b-history-event_time a'
+            links = 'a'
+            comments = 'div.b-comments__history'
+            text = (
+                'div.b-history-event__body '
+                'div.b-history-event__event-textbox2 '
+            )
+            status = (
+                'div.b-history-event__body '
+                'div.b-history-event__event-textbox_status '
+            )
+
+            event_class = 'b-history_event_active-area_shift'
+            subevent_class = 'b-history_event_active-area'
+            event = f'div.{event_class}'
+            subevent = f'div.{subevent_class}:not(.{event_class})'
+
+        astat = 'n => n.getAttribute("data-astat")'
+        author = 'n => n.innerHTML'
+        url = 'n => n.getAttribute("href")'
+        links = (
+            'ns => ns.map(n => {'
+            'return { href: n.getAttribute("href"), text: n.innerText };'
+            '})'
+        )
+        text = 'n => n.innerText'
+        status = 'n => n.innerText'
+
+    s = S
+    ss = S.S
 
     def __init__(self, initialdata):
         super().__init__(initialdata)
@@ -11,42 +51,25 @@ class Event(UserDict):
     def __repr__(self):
         return repr(self.data)
 
-    astat_js = 'node => node.getAttribute("data-astat")'
-
-    url_js = 'node => node.getAttribute("href")'
-    url_selector = 'div.b-history-event_head ' \
-                   'div.b-history-event__action ' \
-                   'div.b-history-event_time a'
-
-    links_js = '''nodes => nodes.map(n => {
-        return { href: n.getAttribute("href"), text: n.innerText };
-    })'''
-    links_selector = 'a'
-
-    text_js = 'node => node.innerText'
-    text_selector = 'div.b-history-event__body ' \
-                    'div.b-history-event__event-textbox2'
-
-    status_js = 'node => node.innerText'
-    status_selector = 'div.b-history-event__body ' \
-                      'div.b-history-event__event-textbox_status'
-
-    event_class = '.b-history_event_active-area_shift'
-    subevent_class = '.b-history_event_active-area'
-    event_selector = 'div' + event_class
-    subevent_selector = 'div' + subevent_class + ':not(%s)' % event_class
-
-    comments_selector = 'div.b-comments__history'
-
     @classmethod
-    async def from_element(cls, element: ElementHandle):
+    async def from_element(cls, element):
+        """Creates a new event from a DOM element.
+
+        Args:
+            element (pyppeteer.element_handle.ElementHandle): the element.
+
+        Returns:
+            event (Event): new instance of this class.
+
+        """
+
         ctx = element.executionContext
-        astat = await ctx.evaluate(cls.astat_js, element)
+        astat = await ctx.evaluate(cls.s.astat, element)
         astat = Astat(*astat.split(':'))
-        comments = await element.J(cls.comments_selector)
+        comments = await element.J(cls.ss.comments)
 
         if astat.subtype in ['comment', 'like']:
-            event = {
+            data = {
                 'time': astat.time,
                 'author': {},  # fixed below
                 # TODO: scrape like/comment 'huid'
@@ -77,13 +100,13 @@ class Event(UserDict):
                 'is_likeable': 0,
             }
 
-            element = await element.J(cls.subevent_selector)
+            element = await element.J(cls.ss.subevent)
             element_type = astat.corr_type
             element_body = await cls._from_element(element, element_type)
-            event['subevent'].update(element_body)
+            data['subevent'].update(element_body)
 
         else:
-            event = {
+            data = {
                 # TODO: scrape event 'thread_id'
                 'authors': [],  # fixed below
                 'type_name': astat.type_name,
@@ -105,41 +128,52 @@ class Event(UserDict):
                 # TODO: scrape event 'action_links'
             }
 
-            element = await element.J(cls.event_selector)
+            element = await element.J(cls.ss.event)
             element_type = astat.type
             element_body = await cls._from_element(element, element_type)
-            event.update(element_body)
+            data.update(element_body)
 
-        return cls(event)
+        event = cls(initialdata=data)
+
+        return event
 
     @classmethod
-    async def _from_element(cls, element: ElementHandle, element_type):
+    async def _from_element(cls, element, element_type):
         body = {}
+
+        # scrape 'authors'
+
+        author = await element.J(cls.ss.author)
+        if author:
+            ctx = author.executionContext
+            author_link = await ctx.evaluate(cls.s.author, author)
+            author_link.strip('/?ref=hs')
+            body['authors'] = [{'link': author_link}]
 
         # scrape 'click_url'
 
         if element_type in ['3-23']:
-            url = await element.J(cls.url_selector)
+            url = await element.J(cls.ss.url)
             ctx = url.executionContext
-            body['click_url'] = await ctx.evaluate(cls.url_js, url)
+            body['click_url'] = await ctx.evaluate(cls.s.url, url)
 
         # scrape 'user_text'
 
         if element_type in ['3-23']:
-            status = await element.J(cls.status_selector)
+            status = await element.J(cls.ss.status)
             ctx = status.executionContext
-            text = await ctx.evaluate(cls.status_js, status)
-            links = await status.JJeval(cls.links_selector, cls.links_js)
+            text = await ctx.evaluate(cls.s.status, status)
+            links = await status.JJeval(cls.ss.links, cls.s.links)
 
             for link in links:
                 text.replace(link['text'], link['href'])
 
             body['user_text'] = text
         else:
-            text = await element.J(cls.text_selector)
+            text = await element.J(cls.ss.text)
             if text:
                 ctx = text.executionContext
-                body['user_text'] = await ctx.evaluate(cls.text_js, text)
+                body['user_text'] = await ctx.evaluate(cls.s.text, text)
 
         return body
 
