@@ -10,13 +10,16 @@ class Event(UserDict):
         class S:
             """Selectors."""
 
-            author = (
-                'div.b-history-event_head '
-                'div.b-history-event__action '
-            )
-            url = f'{author} div.b-history-event_time a'
-            links = 'a'
-            comments = 'div.b-comments__history'
+            event_class = 'b-history_event_active-area_shift'
+            subevent_class = 'b-history_event_active-area'
+            event = f'div.{event_class}'
+            subevent = f'div.{subevent_class}:not(.{event_class})'
+
+            action = 'div.b-history-event_head div.b-history-event__action '
+            author = f'{action} .b-history-event__ownername'
+            time = f'{action} div.b-history-event_time'
+            url = f'{time} a'
+
             text = (
                 'div.b-history-event__body '
                 'div.b-history-event__event-textbox2 '
@@ -25,15 +28,14 @@ class Event(UserDict):
                 'div.b-history-event__body '
                 'div.b-history-event__event-textbox_status '
             )
+            links = f'{status} a'
 
-            event_class = 'b-history_event_active-area_shift'
-            subevent_class = 'b-history_event_active-area'
-            event = f'div.{event_class}'
-            subevent = f'div.{subevent_class}:not(.{event_class})'
+            comments = 'div.b-comments__history'
 
         astat = 'n => n.getAttribute("data-astat")'
-        author = 'n => n.innerHTML'
+        author = 'n => n.getAttribute("href")'
         url = 'n => n.getAttribute("href")'
+
         links = (
             'ns => ns.map(n => {'
             'return { href: n.getAttribute("href"), text: n.innerText };'
@@ -42,8 +44,15 @@ class Event(UserDict):
         text = 'n => n.innerText'
         status = 'n => n.innerText'
 
+    class Types:
+        """Classified types."""
+
+        clickable = ['1-1', '3-23', '5-41']
+        status = '3-23'
+
     s = S
     ss = S.S
+    t = Types
 
     def __init__(self, initialdata):
         super().__init__(initialdata)
@@ -110,7 +119,7 @@ class Event(UserDict):
                 # TODO: scrape event 'thread_id'
                 'authors': [],  # fixed below
                 'type_name': astat.type_name,
-                'click_url': '',  # fixed below if present
+                # skip 'click_url', added below if present
                 'likes_count': astat.likes_count,
                 # skip 'attachments', added below if present
                 'time': astat.time,
@@ -142,33 +151,32 @@ class Event(UserDict):
         body = {}
 
         # scrape 'authors'
-
-        author = await element.J(cls.ss.author)
-        if author:
-            ctx = author.executionContext
-            author_link = await ctx.evaluate(cls.s.author, author)
-            author_link.strip('/?ref=hs')
-            body['authors'] = [{'link': author_link}]
+        author_ref = await element.Jeval(cls.ss.author, cls.s.author) or ''
+        author = {'link': author_ref.strip('/?ref=ho')}
+        body['authors'] = [author]
 
         # scrape 'click_url'
+        if element_type in cls.t.clickable:
+            body['click_url'] = await element.Jeval(cls.ss.url, cls.s.url)
 
-        if element_type in ['3-23']:
-            url = await element.J(cls.ss.url)
-            ctx = url.executionContext
-            body['click_url'] = await ctx.evaluate(cls.s.url, url)
-
-        # scrape 'user_text'
-
-        if element_type in ['3-23']:
+        # scrape 'user_text' and 'text_media'
+        if element_type == cls.t.status:
             status = await element.J(cls.ss.status)
             ctx = status.executionContext
             text = await ctx.evaluate(cls.s.status, status)
             links = await status.JJeval(cls.ss.links, cls.s.links)
 
             for link in links:
-                text.replace(link['text'], link['href'])
-
+                text = text.replace(link['text'], link['href'])
             body['user_text'] = text
+
+            medias = []
+            for link in links:
+                medias.append({
+                    'object': 'link',
+                    'content': {'type-id': 'text', 'contents': text},
+                })
+            body['text_media'] = medias + [{'object': 'text', 'content': text}]
         else:
             text = await element.J(cls.ss.text)
             if text:
@@ -254,5 +262,6 @@ TYPE_NAMES = {
     '5-41': 'user_post',
     '5-44': 'community_video_upload',
     '5-47': 'community_photo_upload',
+    '5-50': '',  # TODO: add name
     #  TODO: add missing types
 }
