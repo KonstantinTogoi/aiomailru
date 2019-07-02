@@ -4,6 +4,19 @@ from collections import UserDict
 class GroupItem(UserDict):
     """Group item."""
 
+    class S:
+        """Scripts."""
+
+        class S:
+            """Selectors."""
+
+            url = 'a.groups__avatar'
+
+        url = 'n => n.getAttribute("href")'
+
+    s = S
+    ss = S.S
+
     def __init__(self, initialdata):
         super().__init__(initialdata)
 
@@ -22,4 +35,7 @@ class GroupItem(UserDict):
 
         """
 
-        pass
+        url = await element.Jeval(cls.ss.url, cls.s.url)
+        data = {'link': url.strip('?ref=')}
+        group = cls(initialdata=data)
+        return group
