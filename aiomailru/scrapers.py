@@ -77,14 +77,14 @@ class GroupsGet(APIScraperMethod):
     ss = S.S
 
     async def __call__(self, **params):
-        if params.get('scrape'):
-            offset = params.get('offset', 0)
-            limit = params.get('limit', 5)
-            page = await self.api.page(self.url, force=True)
-            groups = []
-            return await self.scrape(page, groups, offset, limit)
-        else:
-            return await super().__call__(**params)
+        call = self.call if params.get('scrape') else super().__call__
+        return await call(**params)
+
+    async def call(self, **params):
+        offset = params.get('offset', 0)
+        limit = params.get('limit', 5)
+        page = await self.api.page(self.url, force=True)
+        return await self.scrape(page, [], offset, limit)
 
     async def scrape(self, page, groups, offset, limit):
         """Appends groups from the `page` to the `groups` list."""
@@ -147,16 +147,17 @@ class StreamGetByAuthor(APIScraperMethod):
     sx = S.X
 
     async def __call__(self, **params):
-        if params.get('scrape'):
-            uid = params.get('uid')
-            skip = params.get('skip')
-            limit = params.get('limit')
-            uid = uid if uid is None else str(uid)
-            uuid = skip if skip else uuid4().hex
-            user = (await self.api.users.getInfo(uids=uid))[0]
-            return await self.scrape(user['link'], skip, limit, uuid)
-        else:
-            return await super().__call__(**params)
+        call = self.call if params.get('scrape') else super().__call__
+        return await call(**params)
+
+    async def call(self, **params):
+        uid = params.get('uid')
+        skip = params.get('skip')
+        limit = params.get('limit')
+        uid = uid if uid is None else str(uid)
+        uuid = skip if skip else uuid4().hex
+        user = (await self.api.users.getInfo(uids=uid))[0]
+        return await self.scrape(user['link'], skip, limit, uuid)
 
     @lru_cache(maxsize=None)
     async def scrape(self, url, skip, limit, uuid):
