@@ -38,9 +38,12 @@ class APIScraperMethod(APIMethod):
         return scrapers.get(name, APIMethod)(self.api, name)
 
     async def __call__(self, **params):
-        if 'scrape' in params:
-            params.pop('scrape')
-        return await super().__call__(**params)
+        scrape = params.pop('scrape') if 'scrape' in params else False
+        call = self.call if scrape else super.__call__
+        return await call(**params)
+
+    async def call(self, **params):
+        raise NotImplementedError()
 
 
 class GroupsGet(APIScraperMethod):
@@ -76,10 +79,6 @@ class GroupsGet(APIScraperMethod):
     s = S
     ss = S.S
 
-    async def __call__(self, **params):
-        call = self.call if params.get('scrape') else super().__call__
-        return await call(**params)
-
     async def call(self, **params):
         offset = params.get('offset', 0)
         limit = params.get('limit', 5)
@@ -114,6 +113,49 @@ class GroupsGet(APIScraperMethod):
             return await self.scrape(page, groups, len(elements), limit)
 
 
+class GroupsGetInfo(APIScraperMethod):
+    """Returns information about communities by their IDs."""
+
+    name = 'groups.getInfo'
+
+    class S:
+        """Selectors."""
+
+        main_page = (
+            'html body '
+            'div[id="boosterCanvas"] '
+            'div.l-content div.l-content__center '
+            'div.l-content__center__inner div.b-community__main-page '
+        )
+        closed_signage = f'{main_page} div.mf_cc'
+
+    async def call(self, **params):
+        uids = params['uids']
+        infos = await self.api.users.getInfo(uids=uids)
+
+        for info in infos:
+            if 'group_info' in info:
+                info['group_info'].update(await self.scrape(info['link']))
+
+        return infos
+
+    async def scrape(self, url):
+        """Returns additional information about a group.
+
+        Object fields that are scraped here:
+            - 'is_closed' - information whether the group's stream events
+                are available for current user.
+
+        """
+
+        page = await self.api.page(url, force=True)
+        signage = await page.J(self.S.closed_signage)
+        is_closed = True if signage is not None else False
+        await page.close()
+
+        return {'is_closed': is_closed}
+
+
 class StreamGetByAuthor(APIScraperMethod):
     """Returns a list of events from user or community stream by their IDs."""
 
@@ -144,10 +186,6 @@ class StreamGetByAuthor(APIScraperMethod):
     s = S
     ss = S.S
     sx = S.X
-
-    async def __call__(self, **params):
-        call = self.call if params.get('scrape') else super().__call__
-        return await call(**params)
 
     async def call(self, **params):
         uid = params.get('uid')
@@ -238,5 +276,6 @@ scrapers = {
     'stream': APIScraperMethod,
     'groups': APIScraperMethod,
     GroupsGet.name: GroupsGet,
+    GroupsGetInfo.name: GroupsGetInfo,
     StreamGetByAuthor.name: StreamGetByAuthor,
 }
