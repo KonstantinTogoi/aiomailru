@@ -96,11 +96,10 @@ class GroupsGet(APIScraperMethod):
         start, stop = offset, min(offset + limit, len(elements))
         limit -= stop - start
 
-        session = super(TokenSession, self.api.session)  # for public methods
-
         for i in range(start, stop):
             item = await GroupItem.from_element(elements[i])
-            resp = await session.public_request([item['link'].lstrip('/')])
+            link = item['link'].lstrip('/')
+            resp = await self.api.session.public_request([link])
             group = (await self.api.users.getInfo(uids=resp['uid']))[0]
             groups.append(group)
 
