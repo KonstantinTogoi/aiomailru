@@ -96,9 +96,13 @@ class GroupsGet(APIScraperMethod):
         start, stop = offset, min(offset + limit, len(elements))
         limit -= stop - start
 
+        session = super(TokenSession, self.api.session)  # for public methods
+
         for i in range(start, stop):
             item = await GroupItem.from_element(elements[i])
-            groups.append(item)
+            resp = await session.public_request([item['link'].lstrip('/')])
+            group = (await self.api.users.getInfo(uids=resp['uid']))[0]
+            groups.append(group)
 
         bar = await page.J(self.ss.bar)
         css = await page.Jeval(self.ss.bar, self.s.bar_css) or '' if bar else ''
