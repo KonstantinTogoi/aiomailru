@@ -28,18 +28,15 @@ class APIScraper(Browser):
 class APIScraperMethod(APIMethod):
     """API scraper's method."""
 
-    name = ''
-
-    def __init__(self, api: APIScraper, name=''):
-        super().__init__(api, self.name or name)
+    def __init__(self, api: APIScraper, name: str):
+        super().__init__(api, name)
 
     def __getattr__(self, name):
-        name = self.name + '.' + name
+        name = f'{self.name}.{name}'
         return scrapers.get(name, APIMethod)(self.api, name)
 
-    async def __call__(self, **params):
-        scrape = params.pop('scrape') if 'scrape' in params else False
-        call = self.call if scrape else super.__call__
+    async def __call__(self, scrape=False, **params):
+        call = self.call if scrape else super().__call__
         return await call(**params)
 
     async def call(self, **params):
@@ -49,15 +46,10 @@ class APIScraperMethod(APIMethod):
 class GroupsGet(APIScraperMethod):
     """Returns a list of the communities to which the current user belongs."""
 
-    name = 'groups.get'
     url = 'https://my.mail.ru/my/communities'
 
-    class S:
-        """Scripts."""
-
-        class S:
-            """Selectors."""
-
+    class Scripts:
+        class Selectors:
             content = (
                 'html body '
                 'div.l-content '
@@ -67,17 +59,17 @@ class GroupsGet(APIScraperMethod):
                 'div.groups-catalog__mine-groups '
                 'div.groups-catalog__small-groups '
             )
-            catalog = f'{content} div.groups__container'
-            groups = f'{catalog} div.groups__item'
             bar = f'{content} div.groups-catalog__groups-more'
+            catalog = f'{content} div.groups__container'
             button = f'{bar} span.ui-button-gray'
+            item = f'{catalog} div.groups__item'
 
-        click = f'document.querySelector("{S.button}").click()'
+        click = f'document.querySelector("{Selectors.button}").click()'
         bar_css = 'n => n.getAttribute("style")'
-        loaded = f'document.querySelectorAll("{S.groups}").length > {{}}'
+        loaded = f'document.querySelectorAll("{Selectors.item}").length > {{}}'
 
-    s = S
-    ss = S.S
+    s = Scripts
+    ss = Scripts.Selectors
 
     async def call(self, **params):
         offset = params.get('offset', 0)
@@ -90,7 +82,7 @@ class GroupsGet(APIScraperMethod):
 
         _ = await page.screenshot()
         catalog = await page.J(self.ss.catalog)
-        elements = await catalog.JJ(self.ss.groups)
+        elements = await catalog.JJ(self.ss.item)
 
         start, stop = offset, min(offset + limit, len(elements))
         limit -= stop - start
@@ -116,63 +108,59 @@ class GroupsGet(APIScraperMethod):
 class GroupsGetInfo(APIScraperMethod):
     """Returns information about communities by their IDs."""
 
-    name = 'groups.getInfo'
+    class Scripts:
+        class Selectors:
+            main_page = (
+                'html body '
+                'div.l-content '
+                'div.l-content__center '
+                'div.l-content__center__inner '
+                'div.b-community__main-page '
+            )
+            closed_signage = f'{main_page} div.mf_cc'
 
-    class S:
-        """Selectors."""
-
-        main_page = (
-            'html body '
-            'div[id="boosterCanvas"] '
-            'div.l-content div.l-content__center '
-            'div.l-content__center__inner div.b-community__main-page '
-        )
-        closed_signage = f'{main_page} div.mf_cc'
+    s = Scripts
+    ss = Scripts.Selectors
 
     async def call(self, **params):
         uids = params['uids']
-        infos = await self.api.users.getInfo(uids=uids)
+        info_list = await self.api.users.getInfo(uids=uids)
 
-        for info in infos:
+        for info in info_list:
             if 'group_info' in info:
-                info['group_info'].update(await self.scrape(info['link']))
+                group_info = await self.scrape(info['link'])
+                info['group_info'].update(group_info)
 
-        return infos
+        return info_list
 
     async def scrape(self, url):
         """Returns additional information about a group.
 
         Object fields that are scraped here:
             - 'is_closed' - information whether the group's stream events
-                are available for current user.
+                are closed for current user.
 
         """
 
         page = await self.api.page(url, force=True)
-        signage = await page.J(self.S.closed_signage)
+        signage = await page.J(self.ss.closed_signage)
         is_closed = True if signage is not None else False
         await page.close()
 
-        return {'is_closed': is_closed}
+        group_info = {'is_closed': is_closed}
+
+        return group_info
 
 
 class StreamGetByAuthor(APIScraperMethod):
     """Returns a list of events from user or community stream by their IDs."""
 
-    name = 'stream.getByAuthor'
-
-    class S:
-        """Scripts."""
-
-        class S:
-            """Selectors."""
-
+    class Scripts:
+        class Selectors:
             history = 'div[data-mru-fragment="home/history"]'
             event = 'div.b-history-event'
 
-        class X:
-            """Xpath expressions."""
-
+        class XPaths:
             history = (
                 '/html/body/div[@id="boosterCanvas"]'
                 '//div[@data-mru-fragment="home/history"]'
@@ -183,9 +171,9 @@ class StreamGetByAuthor(APIScraperMethod):
         scroll = 'window.scroll(0, document.body.scrollHeight)'
         state = 'n => n.getAttribute("data-state")'
 
-    s = S
-    ss = S.S
-    sx = S.X
+    s = Scripts
+    ss = Scripts.Selectors
+    sx = Scripts.XPaths
 
     async def call(self, **params):
         uid = params.get('uid')
@@ -273,9 +261,9 @@ class StreamGetByAuthor(APIScraperMethod):
 
 
 scrapers = {
-    'stream': APIScraperMethod,
     'groups': APIScraperMethod,
-    GroupsGet.name: GroupsGet,
-    GroupsGetInfo.name: GroupsGetInfo,
-    StreamGetByAuthor.name: StreamGetByAuthor,
+    'groups.get': GroupsGet,
+    'groups.getInfo': GroupsGetInfo,
+    'stream': APIScraperMethod,
+    'stream.getByAuthor': StreamGetByAuthor,
 }
