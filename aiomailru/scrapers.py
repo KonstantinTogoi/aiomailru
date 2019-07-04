@@ -80,12 +80,13 @@ class GroupsGet(APIScraperMethod):
         if not cookies:
             raise CookieError('Cookie jar is empty. Set cookies.')
 
+        ext = params.get('ext', 0)
+        limit = params.get('limit', 100)
         offset = params.get('offset', 0)
-        limit = params.get('limit', 5)
         page = await self.api.page(self.url, force=True, cookies=cookies)
-        return await self.scrape(page, [], offset, limit)
+        return await self.scrape(page, [], ext, limit, offset)
 
-    async def scrape(self, page, groups, offset, limit):
+    async def scrape(self, page, groups, ext, limit, offset):
         """Appends groups from the `page` to the `groups` list."""
 
         _ = await page.screenshot()
@@ -100,7 +101,10 @@ class GroupsGet(APIScraperMethod):
             link = item['link'].lstrip('/')
             resp = await self.api.session.public_request([link])
             group, *_ = await self.api.users.getInfo(uids=resp['uid'])
-            groups.append(group)
+            if ext:
+                groups.append(group)
+            else:
+                groups.append(group['uid'])
 
         bar = await page.J(self.ss.bar)
         css = await page.Jeval(self.ss.bar, self.s.bar_css) or '' if bar else ''
