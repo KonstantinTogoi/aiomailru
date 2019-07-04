@@ -76,9 +76,13 @@ class GroupsGet(APIScraperMethod):
     ss = Scripts.Selectors
 
     async def call(self, **params):
+        cookies = self.api.session.cookies
+        if not cookies:
+            raise CookieError('Cookie jar is empty. Set cookies.')
+
         offset = params.get('offset', 0)
         limit = params.get('limit', 5)
-        page = await self.api.page(self.url, force=True)
+        page = await self.api.page(self.url, force=True, cookies=cookies)
         return await self.scrape(page, [], offset, limit)
 
     async def scrape(self, page, groups, offset, limit):
@@ -127,17 +131,23 @@ class GroupsGetInfo(APIScraperMethod):
     ss = Scripts.Selectors
 
     async def call(self, **params):
+        cookies = self.api.session.cookies
+        if not cookies:
+            raise CookieError('Cookie jar is empty. Set cookies.')
+
         uids = params['uids']
         info_list = await self.api.users.getInfo(uids=uids)
 
         for info in info_list:
             if 'group_info' in info:
-                group_info = await self.scrape(info['link'])
+                url = info['link']
+                page = await self.api.page(url, force=True, cookies=cookies)
+                group_info = await self.scrape(page)
                 info['group_info'].update(group_info)
 
         return info_list
 
-    async def scrape(self, url):
+    async def scrape(self, page):
         """Returns additional information about a group.
 
         Object fields that are scraped here:
@@ -146,11 +156,8 @@ class GroupsGetInfo(APIScraperMethod):
 
         """
 
-        page = await self.api.page(url, force=True)
         signage = await page.J(self.ss.closed_signage)
         is_closed = True if signage is not None else False
-        await page.close()
-
         group_info = {'is_closed': is_closed}
 
         return group_info
@@ -252,17 +259,15 @@ class StreamGetByAuthor(APIScraperMethod):
         uid = params.get('uid')
         skip = params.get('skip')
         limit = params.get('limit')
-        uid = uid if uid is None else str(uid)
         uuid = skip if skip else uuid4().hex
-        user, *_ = await self.api.users.getInfo(uids=uid)
-        return await self.scrape(user['link'], skip, limit, uuid)
+        return await self.scrape(uid, skip, limit, uuid)
 
     @lru_cache(maxsize=None)
-    async def scrape(self, url, skip, limit, uuid):
+    async def scrape(self, uid, skip, limit, uuid):
         """Returns a list of events from user or community stream.
 
         Args:
-            url (str): Stream URL.
+            uid (int): User ID.
             skip (str): Latest event ID to skip.
             limit (int): Number of events to return.
             uuid (str): Unique identifier. May be used to prevent
@@ -273,9 +278,15 @@ class StreamGetByAuthor(APIScraperMethod):
 
         """
 
+        cookies = self.api.session.cookies
+        if not cookies:
+            raise CookieError('Cookie jar is empty. Set cookies.')
+
+        user, *_ = await self.api.users.getInfo(uids=uid)
+        page = await self.api.page(user['link'], cookies=cookies)
         events = []
 
-        async for event in self.stream(url):
+        async for event in self.stream(page):
             if skip:
                 skip = skip if event['id'] != skip else False
             else:
@@ -286,18 +297,16 @@ class StreamGetByAuthor(APIScraperMethod):
 
         return events
 
-    async def stream(self, url):
+    async def stream(self, page):
         """Yields stream events from the beginning to the end.
 
         Args:
-            url: Stream URL.
+            page (pyppeteer.page.Page): Page with the stream.
 
         Yields:
             event (Event): Stream event.
 
         """
-
-        page = await self.api.page(url)
 
         history = await page.J(self.ss.history)
         history_ctx = history.executionContext
