@@ -238,7 +238,7 @@ class StreamGetByAuthor(APIScraperMethod):
     class Scripts:
         class Selectors:
             history = 'div[data-mru-fragment="home/history"]'
-            event = 'div.b-history-event'
+            event = 'div.b-history-event[data-astat]'
 
         class XPaths:
             history = (
@@ -313,12 +313,8 @@ class StreamGetByAuthor(APIScraperMethod):
         state, elements = None, []
 
         while state != 'noevents':
-            offset = len(elements)
-            elements = await history.JJ(self.ss.event)
-
-            for i in range(offset, len(elements)):
-                event = await Event.from_element(elements[i])
-                yield event
+            for element in await history.JJ(self.ss.event):
+                yield await Event.from_element(element)
 
             await page.evaluate(self.s.scroll)
 
@@ -340,6 +336,7 @@ class StreamGetByAuthor(APIScraperMethod):
             state = await history_ctx.evaluate(self.s.state, history)
             if state == 'loading':
                 await page.waitForXPath(self.sx.loaded)
+                state = await history_ctx.evaluate(self.s.state, history)
 
 
 scrapers = {
