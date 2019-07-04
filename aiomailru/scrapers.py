@@ -114,7 +114,7 @@ class GroupsGet(APIScraperMethod):
         else:
             await page.evaluate(self.s.click)
             await page.waitForFunction(self.s.loaded.format(len(groups)))
-            return await self.scrape(page, groups, len(elements), limit)
+            return await self.scrape(page, groups, ext, limit, len(elements))
 
 
 class GroupsGetInfo(APIScraperMethod):
