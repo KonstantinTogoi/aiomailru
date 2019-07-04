@@ -6,7 +6,8 @@ from concurrent.futures import FIRST_COMPLETED
 from functools import lru_cache
 from uuid import uuid4
 
-from .api import APIMethod
+from .exceptions import APIScrapperError, CookieError
+from .api import API, APIMethod
 from .browser import Browser
 from .objects import Event, GroupItem
 from .sessions import TokenSession
@@ -15,11 +16,14 @@ from .sessions import TokenSession
 log = logging.getLogger(__name__)
 
 
-class APIScraper(Browser):
+class APIScraper(API, Browser):
     """API scraper."""
 
+    __slots__ = ('browser', )
+
     def __init__(self, session: TokenSession, browser=None):
-        super().__init__(session, browser)
+        API.__init__(self, session)
+        Browser.__init__(self, browser)
 
     def __getattr__(self, name):
         return scrapers.get(name, APIMethod)(self, name)
@@ -91,7 +95,7 @@ class GroupsGet(APIScraperMethod):
             item = await GroupItem.from_element(elements[i])
             link = item['link'].lstrip('/')
             resp = await self.api.session.public_request([link])
-            group = (await self.api.users.getInfo(uids=resp['uid']))[0]
+            group, *_ = await self.api.users.getInfo(uids=resp['uid'])
             groups.append(group)
 
         bar = await page.J(self.ss.bar)
@@ -152,6 +156,75 @@ class GroupsGetInfo(APIScraperMethod):
         return group_info
 
 
+class GroupsJoin(APIScraperMethod):
+    """With this method you can join the group."""
+
+    class Scripts:
+        class Selectors:
+            content = (
+                'html body '
+                'div.l-content '
+                'div.l-content__center '
+                'div.l-content__center__inner '
+                'div.b-community__main-page '
+                'div.profile div.profile__contentBlock '
+            )
+            links = (
+                f'{content} '
+                'div.profile__activeLinks '
+                'div.profile__activeLinks_community '
+            )
+            join_span = f'{links} span.profile__activeLinks_button_enter'
+            sent_span = f'{links} span.profile__activeLinks_link_modarated'
+            approved_span = f'{links} span.profile__activeLinks_link_inGroup'
+            auth_span = f'{links} div.l-popup_community-authorization'
+
+        element_visible = (
+            'window.getComputedStyle('
+            'document.querySelector("{}")'
+            ')["display"] != "none"'
+        )
+        join_span_visible = element_visible.format(Selectors.join_span)
+        sent_span_visible = element_visible.format(Selectors.sent_span)
+        approved_span_visible = element_visible.format(Selectors.approved_span)
+        join_click = f'document.querySelector("{Selectors.join_span}").click();'
+
+    s = Scripts
+    ss = Scripts.Selectors
+
+    async def call(self, **params):
+        cookies = self.api.session.cookies
+        if not cookies:
+            raise CookieError('Cookie jar is empty. Set cookies.')
+
+        group_id = params['group_id']
+        info, *_ = await self.api.users.getInfo(uids=str(group_id))
+        page = await self.api.page(info['link'], force=True)
+
+        return await self.scrape(page)
+
+    async def scrape(self, page):
+        if await page.evaluate(self.s.join_span_visible):
+            return await self.join(page)
+        elif await page.evaluate(self.s.sent_span_visible):
+            return 1
+        elif await page.evaluate(self.s.approved_span_visible):
+            return 1
+        else:
+            raise APIScrapperError('A join button not found.')
+
+    async def join(self, page):
+        await page.evaluate(self.s.join_click)
+        await asyncio.sleep(1)
+
+        if await page.evaluate(self.s.sent_span_visible):
+            return 1
+        elif await page.evaluate(self.s.approved_span_visible):
+            return 1
+        else:
+            raise APIScrapperError('Failed to send join request.')
+
+
 class StreamGetByAuthor(APIScraperMethod):
     """Returns a list of events from user or community stream by their IDs."""
 
@@ -181,7 +254,7 @@ class StreamGetByAuthor(APIScraperMethod):
         limit = params.get('limit')
         uid = uid if uid is None else str(uid)
         uuid = skip if skip else uuid4().hex
-        user = (await self.api.users.getInfo(uids=uid))[0]
+        user, *_ = await self.api.users.getInfo(uids=uid)
         return await self.scrape(user['link'], skip, limit, uuid)
 
     @lru_cache(maxsize=None)
@@ -264,6 +337,7 @@ scrapers = {
     'groups': APIScraperMethod,
     'groups.get': GroupsGet,
     'groups.getInfo': GroupsGetInfo,
+    'groups.join': GroupsJoin,
     'stream': APIScraperMethod,
     'stream.getByAuthor': StreamGetByAuthor,
 }

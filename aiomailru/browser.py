@@ -2,21 +2,16 @@ import logging
 import os
 from pyppeteer import connect, launch
 
-from .api import API
-
 
 log = logging.getLogger(__name__)
 
 
-class Browser(API):
+class Browser:
     """A wrapper around pyppeteer.browser.Browser."""
-
-    __slots__ = ('browser', )
 
     endpoint = os.environ.get('PYPPETEER_BROWSER_ENDPOINT')
 
-    def __init__(self, session=None, browser=None):
-        super().__init__(session)
+    def __init__(self, browser=None):
         self.browser = browser
 
     def __await__(self):
@@ -37,13 +32,14 @@ class Browser(API):
 
         return self
 
-    async def page(self, url, force=False):
+    async def page(self, url, force=False, cookies=()):
         """Makes new page and returns its object.
 
         Args:
             url (str): URL to navigate page to. The url should
                 include scheme, e.g. `https://`.
             force (bool): `True` - to always return a new page.
+            cookies (tuple): cookies for the page.
 
         Returns:
             page (pyppeteer.page.Page): page.
@@ -64,11 +60,7 @@ class Browser(API):
         else:
             page = blank_page or await self.browser.newPage()
             await page.setViewport({'width': 1200,  'height': 1920})
-
-            cookies = self.session.cookies
-            if cookies:
-                log.debug('setting cookies..')
-                await page.setCookie(*cookies)
+            await page.setCookie(*cookies)
 
             log.debug('go to %s ..' % url)
             await page.goto(url)
