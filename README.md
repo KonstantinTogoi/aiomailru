@@ -8,6 +8,10 @@
         - [Making API request](#making-api-request)
             + [Client-Server circuit](#client-server-circuit)
             + [Server-Server circuit](#server-server-circuit)
+    + [Scrapers](#scrapers)
+        - [Cookies](#cookies)
+        - [Pyppeteer](#pyppeteer)
+        - [Browserless](#browserless)
 - [License](#license)
 
 ## About
@@ -76,15 +80,21 @@ session = await ImplicitSession(
 )
 ```
 
-List of all permissions is available here: https://api.mail.ru/docs/guides/restapi/#permissions.
-After authentication you will get session key `session.session_key` and user ID `session.uid`.
+List of all permissions is available here:
+https://api.mail.ru/docs/guides/restapi/#permissions.
 
-You can use them to make requests later:
+After authentication you will get session key `session.session_key` and
+user ID `session.uid`.
+
+You can use them to make requests later.
 
 ```python
 access_token = session.session_key
 uid = session.uid
+cookies = session.cookies
 ```
+
+Cookies are required for scraping. See [Scrapers](#scrapers).
 
 #### TokenSession
 
@@ -173,6 +183,55 @@ api = API(session)
 ```
 
 
+### Scrapers
+
+The following scrapers are available:
+
+- `groups.get`
+- `groups.getInfo`
+- `groups.join`
+- `stream.getByAuthor`
+
+```python
+from aiomailru.scrapers import APIScraper
+
+api = APIScraper(session)
+
+# current user's groups
+groups = await api.groups.get()
+```
+
+Scrapers have the following requirements:
+
+#### Cookies
+
+If `session` is instance of [`TokenSession`](#tokensession) you must set cookies
+that were given by [`ImplicitSession`](#implicitsession):
+
+```python
+session = ServerSession(app_id, secret_key, access_token, cookies=cookies)
+```
+
+Scrapers require an instance of Chrome. You can start a new Chrome process or
+connect to the existing Chrome.
+
+#### Pyppeteer
+
+#### Browserless
+
+Start headless chrome using
+
+```bash
+docker-compose up -d chrome
+```
+
+Export environment variable
+
+```bash
+export PYPPETEER_BROWSER_ENDPOINT=ws://localhost:3000
+```
+
+to automatically connect to Chrome.
 
 ## License
 

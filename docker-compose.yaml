@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+    chrome:
+        image: browserless/chrome:1.9.0-chrome-stable
+        environment:
+            - CONNECTION_TIMEOUT=43200000
+            - PREBOOT_CHROME=true
+            - KEEP_ALIVE=true
+            - CHROME_REFRESH_TIME=86400000
+        hostname: chrome
+        ports:
+            - 3000:3000
