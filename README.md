@@ -6,6 +6,16 @@ wrapper. The main features are:
 - support of [REST API](https://api.mail.ru/docs/reference/rest/) methods
 - extra methods (scrapers) based on REST API methods
 
+- [Getting Started](#getting-started)
+    + [REST API](#rest-api)
+        - [ImplicitSession](#implicitsession)
+        - [TokenSession](#tokensession)
+        - [Making API request](#making-api-request)
+            + [Client-Server circuit](#client-server-circuit)
+            + [Server-Server circuit](#server-server-circuit)
+
+
+
 ## Getting Started
 
 Install package using pip
