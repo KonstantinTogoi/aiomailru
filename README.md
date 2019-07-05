@@ -130,8 +130,24 @@ one of the following sessions:
 ##### Client-Server circuit
 
 ```python
+from aiomailru import ImplicitClientSession, API
+session = await ImplicitClientSession(app_id, private_key, email, uid, scope)
+api = API(session)
+```
+
+or if you already have an access token
+
+```python
 from aiomailru import ClientSession, API
-session = await ClientSession(app_id, private_key, access_token, uid)
+session = ClientSession(app_id, private_key, access_token, uid)
+api = API(session)
+```
+
+##### Server-server circuit
+
+```python
+from aiomailru import ImplicitServerSession, API
+session = await ImplicitServerSession(app_id, secret_key, access_token, scope)
 api = API(session)
 ```
 
@@ -140,21 +156,5 @@ or if you already have an access token
 ```python
 from aiomailru import ServerSession, API
 session = ServerSession(app_id, secret_key, access_token)
-api = API(session)
-```
-
-##### Server-server circuit
-
-```python
-from aiomailru import ImplicitClientSession, API
-session = await ImplicitClientSession(app_id, private_key, email, uid)
-api = API(session)
-```
-
-or if you already have an access token
-
-```python
-from aiomailru import ImplicitServerSession, API
-session = ImplicitServerSession(app_id, secret_key, access_token)
 api = API(session)
 ```
