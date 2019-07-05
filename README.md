@@ -1,11 +1,6 @@
 # Platform@Mail.Ru Python REST API wrapper
 
-This is a [my.mail.ru](https://my.mail.ru) (Russian social network) python API
-wrapper. The main features are:
-
-- support of [REST API](https://api.mail.ru/docs/reference/rest/) methods
-- extra methods (scrapers) based on REST API methods
-
+- [About](#about)
 - [Getting Started](#getting-started)
     + [REST API](#rest-api)
         - [ImplicitSession](#implicitsession)
@@ -13,7 +8,15 @@ wrapper. The main features are:
         - [Making API request](#making-api-request)
             + [Client-Server circuit](#client-server-circuit)
             + [Server-Server circuit](#server-server-circuit)
+- [License](#license)
 
+## About
+
+This is a [my.mail.ru](https://my.mail.ru) (Russian social network) python API
+wrapper. The main features are:
+
+* support of [REST API](https://api.mail.ru/docs/reference/rest/) methods
+* extra methods (scrapers) based on REST API methods
 
 
 ## Getting Started
@@ -168,3 +171,9 @@ from aiomailru import ServerSession, API
 session = ServerSession(app_id, secret_key, access_token)
 api = API(session)
 ```
+
+
+
+## License
+
+**aiomailru** is released under an BSD 2-Clause License.
