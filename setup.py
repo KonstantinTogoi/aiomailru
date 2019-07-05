@@ -3,10 +3,10 @@ from setuptools import setup
 
 version = '0.0.1'
 
+readme_filename = os.path.join(os.path.dirname(__file__), 'README.md')
 
-def read(filename):
-    with open(os.path.join(os.path.dirname(__file__), filename)) as f:
-        return f.read()
+with open(readme_filename) as f:
+    readme = f.read()
 
 
 setup(
@@ -16,7 +16,7 @@ setup(
     author_email='konstantin.togoi@outlook.com',
     url='https://github.com/KonstantinTogoi/aiomailru',
     description='Platform@Mail.ru Python REST API wrapper',
-    long_description=read('README.rst'),
+    long_description=readme,
     license='BSD',
     packages=['aiomailru', 'aiomailru.objects'],
     install_requires='aiohttp>=3.0.0',
