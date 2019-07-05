@@ -212,12 +212,50 @@ that were given by [`ImplicitSession`](#implicitsession):
 session = ServerSession(app_id, secret_key, access_token, cookies=cookies)
 ```
 
-Scrapers require an instance of Chrome. You can start a new Chrome process or
-connect to the existing Chrome.
-
 #### Pyppeteer
 
+Scrapers require an instance of Chrome.
+
+You can start a new Chrome process:
+
+```python
+from aiomailru.scrapers import APIScraper
+from pyppeteer import launch
+
+browser = await launch()
+api = APIScraper(session, browser=browser)
+
+print(browser.wsEndpoint)  # your browser's endpoint
+```
+
+or connect to the existing Chrome:
+
+```python
+from aiomailru.scrapers import APIScraper
+from pyppeteer import connect
+
+browser_conn = {'browserWSEndpoint': 'your_endpoint'}
+browser = await connect(browser_conn)
+api = APIScraper(session, browser=browser)
+```
+
+Export environment variable
+
+```bash
+export PYPPETEER_BROWSER_ENDPOINT='your_endpoint'
+```
+
+to automatically connect to Chrome:
+
+```python
+from aiomailru.scrapers import APIScraper
+
+api = APIScraper(session)  # connects to PYPPETEER_BROWSER_ENDPOINT
+```
+
 #### Browserless
+
+You can replace `pyppeteer.launch` with  `pyppeteer.connect`. See https://www.browserless.io
 
 Start headless chrome using
 
@@ -231,7 +269,13 @@ Export environment variable
 export PYPPETEER_BROWSER_ENDPOINT=ws://localhost:3000
 ```
 
-to automatically connect to Chrome.
+to automatically connect to Browserless container:
+
+```python
+from aiomailru.scrapers import APIScraper
+
+api = APIScraper(session)  # connects to ws://localhost:3000
+```
 
 ## License
 
