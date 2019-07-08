@@ -83,10 +83,9 @@ session = await ImplicitSession(
 List of all permissions is available here:
 https://api.mail.ru/docs/guides/restapi/#permissions.
 
+Now you can make requests (See. [Making API request](#making-api-request)).
 After authentication you will get session key `session.session_key` and
-user ID `session.uid`.
-
-You can use them to make requests later.
+user ID `session.uid`. Save them to make requests later.
 
 ```python
 access_token = session.session_key
@@ -98,7 +97,10 @@ Cookies are required for scraping. See [Scrapers](#scrapers).
 
 #### TokenSession
 
-If you already have an access token
+If you already have an access token and either of two:
+
+- `uid` and `private_key`
+- `secret_key`
 
 ```python
 from aiomailru.sessions import TokenSession
@@ -110,6 +112,8 @@ session = TokenSession(
     uid=uid,
 )
 ```
+
+you can instantiate `TokenSession` and make requests.
 
 #### Making API request
 
@@ -154,7 +158,7 @@ one of the following sessions:
 
 ```python
 from aiomailru import ImplicitClientSession, API
-session = await ImplicitClientSession(app_id, private_key, email, uid, scope)
+session = await ImplicitClientSession(app_id, private_key, email, password, scope)
 api = API(session)
 ```
 
@@ -170,7 +174,7 @@ api = API(session)
 
 ```python
 from aiomailru import ImplicitServerSession, API
-session = await ImplicitServerSession(app_id, secret_key, access_token, scope)
+session = await ImplicitServerSession(app_id, secret_key, email, password, scope)
 api = API(session)
 ```
 
