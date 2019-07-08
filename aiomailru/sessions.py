@@ -3,9 +3,9 @@ import asyncio
 import hashlib
 from yarl import URL
 
-from aiomailru.exceptions import Error, AuthorizationError, APIError
-from aiomailru.parser import AuthPageParser
-from aiomailru.utils import full_scope, parseaddr, SignatureCircuit
+from .exceptions import Error, AuthorizationError, APIError
+from .parser import AuthPageParser
+from .utils import full_scope, parseaddr, SignatureCircuit, Cookie
 
 
 class Session:
@@ -35,29 +35,29 @@ class Session:
 class PublicSession(Session):
     """Session for calling public API methods of Platform@Mail.Ru."""
 
-    url = 'http://appsmail.ru/platform'
+    public_url = 'http://appsmail.ru/platform'
     content_type = 'text/javascript; charset=utf-8'
 
-    async def request(self, path=(), params=None):
+    async def public_request(self, segments=(), params=None):
         """Requests public data.
 
         Args:
-            path (tuple): additional parts for url, e.g. ('mail', 'grishin')
-            params (dict): request's parameters
+            segments (tuple): additional segments for URL path.
+            params (dict): URL parameters.
 
         Returns:
             response (dict): JSON object response.
 
         """
 
-        url = '/'.join((self.url, *path))
+        url = f'{self.public_url}/{"/".join(segments)}'
 
         try:
             async with self.session.get(url, params=params) as resp:
                 status = resp.status
                 response = await resp.json(content_type=self.content_type)
         except aiohttp.ContentTypeError:
-            raise Error('got non-REST path: %s' % url)
+            raise Error(f'got non-REST path: {url}')
 
         if status != 200:
             raise APIError(response['error'])
@@ -68,19 +68,35 @@ class PublicSession(Session):
 class TokenSession(PublicSession):
     """Session for sending authorized requests."""
 
-    url = 'http://appsmail.ru/platform/api'
+    api_url = f'{PublicSession.public_url}/api'
     error_msg = "See https://api.mail.ru/docs/guides/restapi/#sig."
 
-    __slots__ = 'app_id', 'private_key', 'secret_key', 'session_key', 'uid'
+    __slots__ = ('app_id', 'private_key', 'secret_key', 'session_key', 'uid')
 
     def __init__(self, app_id, private_key, secret_key,
-                 access_token, uid, session=None):
+                 access_token, uid, cookies=(), session=None):
         super().__init__(session)
         self.app_id = app_id
         self.private_key = private_key
         self.secret_key = secret_key
         self.session_key = access_token
         self.uid = uid
+        self.cookies = cookies
+
+    @property
+    def cookies(self):
+        """HTTP cookies from cookie jar."""
+        return [Cookie.from_morsel(m) for m in self.session.cookie_jar]
+
+    @cookies.setter
+    def cookies(self, cookies):
+        loose_cookies = []
+
+        for cookie in cookies:
+            loose_cookie = Cookie.to_morsel(cookie)
+            loose_cookies.append((loose_cookie.key, loose_cookie))
+
+        self.session.cookie_jar.update_cookies(loose_cookies)
 
     @property
     def sig_circuit(self):
@@ -99,12 +115,12 @@ class TokenSession(PublicSession):
         return params
 
     def params_to_str(self, params):
-        params = ['%s=%s' % (k, str(params[k])) for k in sorted(params)]
+        query = ''.join(f'{k}={str(params[k])}' for k in sorted(params))
 
         if self.sig_circuit is SignatureCircuit.CLIENT_SERVER:
-            return self.uid + ''.join(params) + self.private_key
+            return f'{self.uid}{query}{self.private_key}'
         elif self.sig_circuit is SignatureCircuit.SERVER_SERVER:
-            return ''.join(params) + self.secret_key
+            return f'{query}{self.secret_key}'
         else:
             raise Error(self.error_msg)
 
@@ -123,12 +139,12 @@ class TokenSession(PublicSession):
         sig = hashlib.md5(query.encode('UTF-8')).hexdigest()
         return sig
 
-    async def request(self, path=(), params=None):
+    async def request(self, segments=(), params=()):
         """Sends an authorized request.
 
         Args:
-            path (tuple): additional parts for url, e.g. ('mail', 'grishin')
-            params (dict): request's parameters, contains key 'method', e.g.
+            segments (tuple): additional segments for URL path.
+            params (dict): URL parameters, contains key 'method', e.g.
                 {
                     "method": "stream.getByAuthor",
                     "uid": "15410773191172635989",
@@ -140,9 +156,10 @@ class TokenSession(PublicSession):
 
         """
 
-        url = '/'.join((self.url, *path))
+        url = f'{self.api_url}/{"/".join(segments)}'
 
-        params = dict(params or {})
+        params = dict(params)
+        params = {k: params[k] for k in params if params[k] is not None}
         params.update(self.basic_params)
         params.update({'sig': self.sign_params(params)})
 
@@ -160,21 +177,25 @@ class ClientSession(TokenSession):
 
     error_msg = "Pass 'uid' and 'private_key' to use client-server circuit."
 
-    def __init__(self, app_id, private_key, access_token, uid, session=None):
-        super().__init__(app_id, private_key, '', access_token, uid, session)
+    def __init__(self, app_id, private_key, access_token, uid,
+                 cookies=(), session=None):
+        super().__init__(app_id, private_key, '',
+                         access_token, uid, cookies, session)
 
 
 class ServerSession(TokenSession):
 
     error_msg = "Pass 'secret_key' to use server-server circuit."
 
-    def __init__(self, app_id, secret_key, access_token, session=None):
-        super().__init__(app_id, '', secret_key, access_token, '', session)
+    def __init__(self, app_id, secret_key, access_token,
+                 cookies=(), session=None):
+        super().__init__(app_id, '', secret_key,
+                         access_token, '', cookies, session)
 
 
 class ImplicitSession(TokenSession):
 
-    auth_url = 'https://connect.mail.ru/oauth/authorize'
+    oauth_url = 'https://connect.mail.ru/oauth/authorize'
     redirect_uri = 'http%3A%2F%2Fconnect.mail.ru%2Foauth%2Fsuccess.html'
 
     __slots__ = ('email', 'passwd', 'scope',
@@ -182,7 +203,7 @@ class ImplicitSession(TokenSession):
 
     def __init__(self, app_id, private_key, secret_key,
                  email, passwd, scope, session=None):
-        super().__init__(app_id, private_key, secret_key, '', '', session)
+        super().__init__(app_id, private_key, secret_key, '', '', (), session)
         self.email = email
         self.passwd = passwd
         self.scope = scope or full_scope()
@@ -220,7 +241,7 @@ class ImplicitSession(TokenSession):
     async def _get_auth_page(self):
         """Returns url and html code of authorization page."""
 
-        async with self.session.get(self.auth_url, params=self.params) as resp:
+        async with self.session.get(self.oauth_url, params=self.params) as resp:
             if resp.status != 200:
                 raise AuthorizationError("Wrong 'app_id' or 'scope'.")
             url, html = resp.url, await resp.text()
@@ -247,22 +268,20 @@ class ImplicitSession(TokenSession):
 
         domain, login = parseaddr(self.email)
         form_data['Login'] = login
-        form_data['Domain'] = domain + '.ru'
+        form_data['Domain'] = f'{domain}.ru'
         form_data['Password'] = self.passwd
 
         async with self.session.post(form_url, data=form_data) as resp:
+            if resp.status != 200:
+                raise AuthorizationError("Failed to process authorization form")
             url, status, html = resp.url, resp.status, await resp.text()
-
-        if status != 200:
-            raise AuthorizationError("Failed to process authorization form")
 
         return url, html
 
     async def _get_auth_response(self):
-        async with self.session.get(self.auth_url, params=self.params,
-                                    allow_redirects=False) as resp:
-            url = URL(resp.headers['Location'])
-            url = URL('?' + url.fragment)
+        async with self.session.get(self.oauth_url, params=self.params) as resp:
+            location = URL(resp.history[-1].headers['Location'])
+            url = URL('?' + location.fragment)
 
         try:
             self.session_key = url.query['access_token']
@@ -272,7 +291,7 @@ class ImplicitSession(TokenSession):
             self.uid = url.query['x_mailru_vid']
         except KeyError as e:
             key = e.args[0]
-            raise AuthorizationError('%s is missing in the auth response' % key)
+            raise AuthorizationError(f'"{key}" is missing in the auth response')
 
 
 class ImplicitClientSession(ImplicitSession):
