@@ -11,7 +11,7 @@ from .utils import full_scope, parseaddr, SignatureCircuit, Cookie
 class Session:
     """A wrapper around aiohttp.ClientSession."""
 
-    __slots__ = 'session'
+    __slots__ = ('session', )
 
     def __init__(self, session=None):
         self.session = session or aiohttp.ClientSession()
@@ -35,8 +35,8 @@ class Session:
 class PublicSession(Session):
     """Session for calling public API methods of Platform@Mail.Ru."""
 
-    public_url = 'http://appsmail.ru/platform'
-    content_type = 'text/javascript; charset=utf-8'
+    PUBLIC_URL = 'http://appsmail.ru/platform'
+    CONTENT_TYPE = 'text/javascript; charset=utf-8'
 
     async def public_request(self, segments=(), params=None):
         """Requests public data.
@@ -50,12 +50,12 @@ class PublicSession(Session):
 
         """
 
-        url = f'{self.public_url}/{"/".join(segments)}'
+        url = f'{self.PUBLIC_URL}/{"/".join(segments)}'
 
         try:
             async with self.session.get(url, params=params) as resp:
                 status = resp.status
-                response = await resp.json(content_type=self.content_type)
+                response = await resp.json(content_type=self.CONTENT_TYPE)
         except aiohttp.ContentTypeError:
             raise Error(f'got non-REST path: {url}')
 
@@ -68,8 +68,8 @@ class PublicSession(Session):
 class TokenSession(PublicSession):
     """Session for sending authorized requests."""
 
-    api_url = f'{PublicSession.public_url}/api'
-    error_msg = "See https://api.mail.ru/docs/guides/restapi/#sig."
+    API_URL = f'{PublicSession.PUBLIC_URL}/api'
+    ERROR_MSG = "See https://api.mail.ru/docs/guides/restapi/#sig."
 
     __slots__ = ('app_id', 'private_key', 'secret_key', 'session_key', 'uid')
 
@@ -108,7 +108,8 @@ class TokenSession(PublicSession):
             return SignatureCircuit.UNDEFINED
 
     @property
-    def basic_params(self):
+    def required_params(self):
+        """Required parameters."""
         params = {'app_id': self.app_id, 'session_key': self.session_key}
         if self.sig_circuit is SignatureCircuit.SERVER_SERVER:
             params['secure'] = '1'
@@ -122,7 +123,7 @@ class TokenSession(PublicSession):
         elif self.sig_circuit is SignatureCircuit.SERVER_SERVER:
             return f'{query}{self.secret_key}'
         else:
-            raise Error(self.error_msg)
+            raise Error(self.ERROR_MSG)
 
     def sign_params(self, params):
         """Signs the request parameters according to signature circuit.
@@ -140,7 +141,7 @@ class TokenSession(PublicSession):
         return sig
 
     async def request(self, segments=(), params=()):
-        """Sends an authorized request.
+        """Sends a request.
 
         Args:
             segments (tuple): additional segments for URL path.
@@ -156,16 +157,15 @@ class TokenSession(PublicSession):
 
         """
 
-        url = f'{self.api_url}/{"/".join(segments)}'
+        url = f'{self.API_URL}/{"/".join(segments)}'
 
-        params = dict(params)
-        params = {k: params[k] for k in params if params[k] is not None}
-        params.update(self.basic_params)
+        params = {k: params[k] for k in params if params[k]}
+        params.update(self.required_params)
         params.update({'sig': self.sign_params(params)})
 
         async with self.session.get(url, params=params) as resp:
             status = resp.status
-            response = await resp.json(content_type=self.content_type)
+            response = await resp.json(content_type=self.CONTENT_TYPE)
 
         if status != 200:
             raise APIError(response['error'])
@@ -175,7 +175,7 @@ class TokenSession(PublicSession):
 
 class ClientSession(TokenSession):
 
-    error_msg = "Pass 'uid' and 'private_key' to use client-server circuit."
+    ERROR_MSG = "Pass 'uid' and 'private_key' to use client-server circuit."
 
     def __init__(self, app_id, private_key, access_token, uid,
                  cookies=(), session=None):
@@ -185,7 +185,7 @@ class ClientSession(TokenSession):
 
 class ServerSession(TokenSession):
 
-    error_msg = "Pass 'secret_key' to use server-server circuit."
+    ERROR_MSG = "Pass 'secret_key' to use server-server circuit."
 
     def __init__(self, app_id, secret_key, access_token,
                  cookies=(), session=None):
@@ -195,8 +195,8 @@ class ServerSession(TokenSession):
 
 class ImplicitSession(TokenSession):
 
-    oauth_url = 'https://connect.mail.ru/oauth/authorize'
-    redirect_uri = 'http%3A%2F%2Fconnect.mail.ru%2Foauth%2Fsuccess.html'
+    OAUTH_URL = 'https://connect.mail.ru/oauth/authorize'
+    REDIRECT_URI = 'http%3A%2F%2Fconnect.mail.ru%2Foauth%2Fsuccess.html'
 
     __slots__ = ('email', 'passwd', 'scope',
                  'expires_in', 'refresh_token', 'token_type')
@@ -213,7 +213,7 @@ class ImplicitSession(TokenSession):
         """Authorization parameters."""
         return {
             'client_id': self.app_id,
-            'redirect_uri': self.redirect_uri,
+            'redirect_uri': self.REDIRECT_URI,
             'response_type': 'token',
             'scope': self.scope,
         }
@@ -241,7 +241,7 @@ class ImplicitSession(TokenSession):
     async def _get_auth_page(self):
         """Returns url and html code of authorization page."""
 
-        async with self.session.get(self.oauth_url, params=self.params) as resp:
+        async with self.session.get(self.OAUTH_URL, params=self.params) as resp:
             if resp.status != 200:
                 raise AuthorizationError("Wrong 'app_id' or 'scope'.")
             url, html = resp.url, await resp.text()
@@ -279,9 +279,9 @@ class ImplicitSession(TokenSession):
         return url, html
 
     async def _get_auth_response(self):
-        async with self.session.get(self.oauth_url, params=self.params) as resp:
+        async with self.session.get(self.OAUTH_URL, params=self.params) as resp:
             location = URL(resp.history[-1].headers['Location'])
-            url = URL('?' + location.fragment)
+            url = URL(f'?{location.fragment}')
 
         try:
             self.session_key = url.query['access_token']
