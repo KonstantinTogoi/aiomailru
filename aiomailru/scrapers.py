@@ -190,14 +190,13 @@ class GroupsJoin(APIScraperMethod):
             approved_span = f'{links} span.profile__activeLinks_link_inGroup'
             auth_span = f'{links} div.l-popup_community-authorization'
 
-        element_visible = (
-            'window.getComputedStyle('
-            'document.querySelector("{}")'
-            ')["display"] != "none"'
-        )
-        join_span_visible = element_visible.format(Selectors.join_span)
-        sent_span_visible = element_visible.format(Selectors.sent_span)
-        approved_span_visible = element_visible.format(Selectors.approved_span)
+        selector = 'document.querySelector("{}")'
+        get_style = f'window.getComputedStyle({selector})'
+        visible = f'{get_style}["display"] != "none"'
+        join_span_visible = visible.format(Selectors.join_span)
+        sent_span_visible = visible.format(Selectors.sent_span)
+        approved_span_visible = visible.format(Selectors.approved_span)
+
         join_click = f'document.querySelector("{Selectors.join_span}").click();'
 
     s = Scripts
@@ -210,7 +209,7 @@ class GroupsJoin(APIScraperMethod):
 
         group_id = params['group_id']
         info, *_ = await self.api.users.getInfo(uids=str(group_id))
-        page = await self.api.page(info['link'], force=True)
+        page = await self.api.page(info['link'], force=True, cookies=cookies)
 
         return await self.scrape(page)
 

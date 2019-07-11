@@ -4,7 +4,7 @@ from .sessions import TokenSession
 
 
 class API:
-    """API."""
+    """Platform@Mail.Ru REST API."""
 
     __slots__ = ('session', )
 
@@ -19,7 +19,7 @@ class API:
 
 
 class APIMethod:
-    """API's method."""
+    """Platform@Mail.Ru REST API method."""
 
     __slots__ = ('api', 'name')
 
@@ -28,9 +28,8 @@ class APIMethod:
         self.name = name
 
     def __getattr__(self, name):
-        return APIMethod(self.api, self.name + '.' + name)
+        return APIMethod(self.api, f'{self.name}.{name}')
 
     async def __call__(self, **params):
-        params = dict(params)
         params['method'] = self.name
         return await self.api.session.request(params=params)
