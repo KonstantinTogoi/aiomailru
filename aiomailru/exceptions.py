@@ -2,7 +2,7 @@ class Error(Exception):
     pass
 
 
-class AuthorizationError(Error):
+class AuthError(Error):
     pass
 
 
