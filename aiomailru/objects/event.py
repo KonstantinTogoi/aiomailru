@@ -4,19 +4,17 @@ from collections import UserDict
 class Event(UserDict):
     """Event."""
 
-    class S:
-        """Scripts."""
-
-        class S:
-            """Selectors."""
-
+    class Scripts:
+        class Selectors:
             event_class = 'b-history_event_active-area_shift'
             subevent_class = 'b-history_event_active-area'
             event = f'div.{event_class}'
             subevent = f'div.{subevent_class}:not(.{event_class})'
 
-            action = 'div.b-history-event_head div.b-history-event__action '
-            author = f'{action} .b-history-event__ownername'
+            head = 'div.b-history-event_head'
+            controls = f'{head} div.b-history-event__controls'
+            action = f'{head} div.b-history-event__action'
+            author = f'{controls} span.ui-tooltip-action'
             time = f'{action} div.b-history-event_time'
             url = f'{time} a'
 
@@ -33,7 +31,7 @@ class Event(UserDict):
             comments = 'div.b-comments__history'
 
         astat = 'n => n.getAttribute("data-astat")'
-        author = 'n => n.getAttribute("href")'
+        author = 'n => n.getAttribute("data-event-control-dir")'
         url = 'n => n.getAttribute("href")'
 
         links = (
@@ -45,13 +43,11 @@ class Event(UserDict):
         status = 'n => n.innerText'
 
     class Types:
-        """Classified types."""
-
-        clickable = ['1-1', '3-23', '5-41']
+        clickable = ['1-1', '3-23', '5-39', '5-41']
         status = '3-23'
 
-    s = S
-    ss = S.S
+    s = Scripts
+    ss = Scripts.Selectors
     t = Types
 
     def __init__(self, initialdata):
@@ -151,8 +147,12 @@ class Event(UserDict):
         body = {}
 
         # scrape 'authors'
-        author_ref = await element.Jeval(cls.ss.author, cls.s.author) or ''
-        author = {'link': author_ref.strip('/?ref=ho')}
+        controls = await element.J(cls.ss.controls)
+        if controls:
+            author_ref = await element.Jeval(cls.ss.author, cls.s.author) or ''
+        else:
+            author_ref = ''
+        author = {'link': author_ref}
         body['authors'] = [author]
 
         # scrape 'click_url'
