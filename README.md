@@ -283,4 +283,4 @@ api = APIScraper(session)  # connects to ws://localhost:3000
 
 ## License
 
-**aiomailru** is released under an BSD 2-Clause License.
+**aiomailru** is released under the BSD 2-Clause License.
