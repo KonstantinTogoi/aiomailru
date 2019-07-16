@@ -4,18 +4,13 @@ from collections import UserDict
 class GroupItem(UserDict):
     """Group item."""
 
-    class S:
-        """Scripts."""
-
-        class S:
-            """Selectors."""
-
+    class Scripts:
+        class Selectors:
             url = 'a.groups__avatar'
-
         url = 'n => n.getAttribute("href")'
 
-    s = S
-    ss = S.S
+    s = Scripts
+    ss = Scripts.Selectors
 
     def __init__(self, initialdata):
         super().__init__(initialdata)
