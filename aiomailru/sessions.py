@@ -263,7 +263,7 @@ class ImplicitSession(TokenSession):
 
         parser = AuthPageParser()
         parser.feed(html)
-        form_url, form_data = parser.url, dict(parser.inputs)
+        form_url, form_data = parser.form
         parser.close()
 
         domain, login = parseaddr(self.email)
