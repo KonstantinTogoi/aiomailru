@@ -12,9 +12,8 @@ class Event(UserDict):
             subevent = f'div.{subevent_class}:not(.{event_class})'
 
             head = 'div.b-history-event_head'
-            controls = f'{head} div.b-history-event__controls'
             action = f'{head} div.b-history-event__action'
-            author = f'{controls} span.ui-tooltip-action'
+            author = f'{action} .b-history-event__ownername'
             time = f'{action} div.b-history-event_time'
             url = f'{time} a'
 
@@ -31,7 +30,7 @@ class Event(UserDict):
             comments = 'div.b-comments__history'
 
         astat = 'n => n.getAttribute("data-astat")'
-        author = 'n => n.getAttribute("data-event-control-dir")'
+        author = 'n => n.getAttribute("href")'
         url = 'n => n.getAttribute("href")'
 
         links = (
@@ -143,45 +142,38 @@ class Event(UserDict):
         return event
 
     @classmethod
-    async def _from_element(cls, element, element_type):
-        body = {}
+    async def _from_element(cls, elem, elem_type):
+        body, author, url = {}, {}, ''
 
-        # scrape 'authors'
-        controls = await element.J(cls.ss.controls)
-        if controls:
-            author_ref = await element.Jeval(cls.ss.author, cls.s.author) or ''
-        else:
-            author_ref = ''
-        author = {'link': author_ref}
-        body['authors'] = [author]
+        # scrape 'authors' (all but the stream owner)
+        author_ref = await elem.Jeval(cls.ss.author, cls.s.author) or ''
+        if author_ref:
+            author['link'] = author_ref.rstrip('?ref=ho')
+        body['authors'] = [author] if author else []
 
         # scrape 'click_url'
-        if element_type in cls.t.clickable:
-            body['click_url'] = await element.Jeval(cls.ss.url, cls.s.url)
+        if elem_type in cls.t.clickable:
+            url = await elem.Jeval(cls.ss.url, cls.s.url)
+        body['click_url'] = f'https://my.mail.ru{url}' if url else url
 
         # scrape 'user_text' and 'text_media'
-        if element_type == cls.t.status:
-            status = await element.J(cls.ss.status)
-            ctx = status.executionContext
-            text = await ctx.evaluate(cls.s.status, status)
-            links = await status.JJeval(cls.ss.links, cls.s.links)
+        if elem_type == cls.t.status:
+            stts = await elem.J(cls.ss.status)
+            text = await elem.Jeval(cls.ss.status, cls.s.status) if stts else ''
+            links = await stts.JJeval(cls.ss.links, cls.s.links)
 
             for link in links:
                 text = text.replace(link['text'], link['href'])
-            body['user_text'] = text
 
-            medias = []
-            for link in links:
-                medias.append({
-                    'object': 'link',
-                    'content': {'type-id': 'text', 'contents': text},
-                })
-            body['text_media'] = medias + [{'object': 'text', 'content': text}]
+            # scrape 'text_media'
+            content = {'type-id': 'text', 'contents': text}
+            link_media = [{'object': 'link', 'content': content} for _ in links]
+            text_media = [{'object': 'text', 'content': text}]
+            body['text_media'] = link_media + text_media
         else:
-            text = await element.J(cls.ss.text)
-            if text:
-                ctx = text.executionContext
-                body['user_text'] = await ctx.evaluate(cls.s.text, text)
+            text = await elem.J(cls.ss.text)
+            text = await elem.Jeval(cls.ss.text, cls.s.text) if text else ''
+        body['user_text'] = text
 
         return body
 
