@@ -4,13 +4,13 @@ from setuptools import setup
 
 readme_path = join(dirname(__file__), 'README.md')
 
-with open(readme_path, encoding='utf-8') as readme_file:
+with open(readme_path) as readme_file:
     readme = readme_file.read()
 
 
 setup(
     name='aiomailru',
-    version='0.0.3',
+    version='0.0.4',
     author='Konstantin Togoi',
     author_email='konstantin.togoi@protonmail.com',
     url='https://github.com/KonstantinTogoi/aiomailru',

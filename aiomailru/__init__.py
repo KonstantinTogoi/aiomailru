@@ -3,7 +3,7 @@ from . import api, exceptions, objects, parser, sessions, utils
 from .utils import parseaddr
 from .exceptions import (
     Error,
-    AuthorizationError,
+    AuthError,
     APIError,
     APIScrapperError,
     CookieError,

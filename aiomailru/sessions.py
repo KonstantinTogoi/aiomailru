@@ -3,7 +3,7 @@ import asyncio
 import hashlib
 from yarl import URL
 
-from .exceptions import Error, AuthorizationError, APIError
+from .exceptions import Error, AuthError, APIError
 from .parser import AuthPageParser
 from .utils import full_scope, parseaddr, SignatureCircuit, Cookie
 
@@ -69,7 +69,7 @@ class TokenSession(PublicSession):
     """Session for sending authorized requests."""
 
     API_URL = f'{PublicSession.PUBLIC_URL}/api'
-    ERROR_MSG = "See https://api.mail.ru/docs/guides/restapi/#sig."
+    ERROR_MSG = 'See https://api.mail.ru/docs/guides/restapi/#sig.'
 
     __slots__ = ('app_id', 'private_key', 'secret_key', 'session_key', 'uid')
 
@@ -175,7 +175,7 @@ class TokenSession(PublicSession):
 
 class ClientSession(TokenSession):
 
-    ERROR_MSG = "Pass 'uid' and 'private_key' to use client-server circuit."
+    ERROR_MSG = 'Pass "uid" and "private_key" to use client-server circuit.'
 
     def __init__(self, app_id, private_key, access_token, uid,
                  cookies=(), session=None):
@@ -185,7 +185,7 @@ class ClientSession(TokenSession):
 
 class ServerSession(TokenSession):
 
-    ERROR_MSG = "Pass 'secret_key' to use server-server circuit."
+    ERROR_MSG = 'Pass "secret_key" to use server-server circuit.'
 
     def __init__(self, app_id, secret_key, access_token,
                  cookies=(), session=None):
@@ -226,14 +226,14 @@ class ImplicitSession(TokenSession):
                 url, html = await self._process_auth_form(html)
 
             if url.query.get('fail') == '1':
-                raise AuthorizationError('invalid login or password')
+                raise AuthError('invalid login or password')
 
             if url.path.endswith('/oauth/success.html'):
                 await self._get_auth_response()
                 return self
 
             if attempt_num >= num_attempts:
-                raise AuthorizationError('Authorization failed')
+                raise AuthError('Authorization failed')
 
             await asyncio.sleep(retry_interval)
             url, html = await self._get_auth_page()
@@ -243,27 +243,27 @@ class ImplicitSession(TokenSession):
 
         async with self.session.get(self.OAUTH_URL, params=self.params) as resp:
             if resp.status != 200:
-                raise AuthorizationError("Wrong 'app_id' or 'scope'.")
+                raise AuthError("Wrong 'app_id' or 'scope'.")
             url, html = resp.url, await resp.text()
 
         return url, html
 
     async def _process_auth_form(self, html):
-        """Submits a form with e-mail, password and scope
+        """Submits a form with e-mail, password and domain
         to get access token and user id.
 
         Args:
-            html (str): authorization page's html code
+            html (str): authorization page's html code.
 
         Returns:
-            url (URL): redirected page's url
-            html (str): redirected page's html code
+            url (URL): redirected page's url.
+            html (str): redirected page's html code.
 
         """
 
         parser = AuthPageParser()
         parser.feed(html)
-        form_url, form_data = parser.url, dict(parser.inputs)
+        form_url, form_data = parser.form
         parser.close()
 
         domain, login = parseaddr(self.email)
@@ -273,7 +273,7 @@ class ImplicitSession(TokenSession):
 
         async with self.session.post(form_url, data=form_data) as resp:
             if resp.status != 200:
-                raise AuthorizationError("Failed to process authorization form")
+                raise AuthError('Failed to process authorization form')
             url, status, html = resp.url, resp.status, await resp.text()
 
         return url, html
@@ -291,7 +291,7 @@ class ImplicitSession(TokenSession):
             self.uid = url.query['x_mailru_vid']
         except KeyError as e:
             key = e.args[0]
-            raise AuthorizationError(f'"{key}" is missing in the auth response')
+            raise AuthError(f'"{key}" is missing in the auth response')
 
 
 class ImplicitClientSession(ImplicitSession):
