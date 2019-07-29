@@ -1,9 +1,38 @@
 class Error(Exception):
-    pass
+
+    @property
+    def error(self):
+        return self.args[0]
+
+    def __init__(self, error: str or dict):
+        arg = error if isinstance(error, dict) else {
+            'error': 'internal_error',
+            'error_description': error,
+        }
+        super().__init__(arg)
 
 
 class AuthError(Error):
-    pass
+
+    ERROR = {
+        'error': 'invalid_user_credentials',
+        'error_description': 'invalid login or password',
+    }
+
+    def __init__(self):
+        super().__init__(self.ERROR)
+
+
+class MyMailAuthError(Error):
+    """Invalid client id."""
+
+    ERROR = {
+        'error': 'invalid_client',
+        'error_description': 'invalid client id',
+    }
+
+    def __init__(self):
+        super().__init__(self.ERROR)
 
 
 class APIError(Error):
