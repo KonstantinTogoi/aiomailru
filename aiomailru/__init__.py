@@ -4,6 +4,7 @@ from .utils import parseaddr
 from .exceptions import (
     Error,
     AuthError,
+    MyMailAuthError,
     APIError,
     APIScrapperError,
     CookieError,
