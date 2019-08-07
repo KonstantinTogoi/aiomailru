@@ -6,7 +6,7 @@ from concurrent.futures import FIRST_COMPLETED
 from functools import lru_cache
 from uuid import uuid4
 
-from .exceptions import APIScrapperError, CookieError
+from .exceptions import APIError, APIScrapperError, CookieError
 from .api import API, APIMethod
 from .browser import Browser
 from .objects import Event, GroupItem
@@ -142,6 +142,12 @@ class GroupsGetInfo(APIScraperMethod):
         uids = params['uids']
         info_list = await self.api.users.getInfo(uids=uids)
 
+        if isinstance(info_list, dict):
+            if self.api.session.pass_error:
+                return info_list
+            else:
+                raise APIError(info_list)
+
         for info in info_list:
             if 'group_info' in info:
                 url = info['link']
@@ -207,10 +213,16 @@ class GroupsJoin(APIScraperMethod):
         if not cookies:
             raise CookieError('Cookie jar is empty. Set cookies.')
 
-        group_id = params['group_id']
-        info, *_ = await self.api.users.getInfo(uids=str(group_id))
-        page = await self.api.page(info['link'], force=True, cookies=cookies)
+        info = await self.api.users.getInfo(uids=params['group_id'])
+        if isinstance(info, dict):
+            if self.api.session.pass_error:
+                return info
+            else:
+                raise APIError(info)
+        else:
+            link = info[0]['link']
 
+        page = await self.api.page(link, force=True, cookies=cookies)
         return await self.scrape(page)
 
     async def scrape(self, page):
@@ -260,8 +272,8 @@ class StreamGetByAuthor(APIScraperMethod):
 
     async def call(self, **params):
         uid = params.get('uid')
-        skip = params.get('skip')
-        limit = params.get('limit')
+        skip = params.get('skip', '')
+        limit = params.get('limit', 10)
         uuid = skip if skip else uuid4().hex
         return await self.scrape(uid, skip, limit, uuid)
 
@@ -285,8 +297,17 @@ class StreamGetByAuthor(APIScraperMethod):
         if not cookies:
             raise CookieError('Cookie jar is empty. Set cookies.')
 
-        user, *_ = await self.api.users.getInfo(uids=uid)
-        page = await self.api.page(user['link'], cookies=cookies)
+        info = await self.api.users.getInfo(uids=uid)
+
+        if isinstance(info, dict):
+            if self.api.session.pass_error:
+                return info
+            else:
+                raise APIError(info)
+        else:
+            link = info[0]['link']
+
+        page = await self.api.page(link, cookies=cookies)
         events = []
 
         async for event in self.stream(page):

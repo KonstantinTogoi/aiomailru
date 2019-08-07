@@ -1,7 +1,7 @@
+import http.cookies
 import re
 from datetime import datetime
 from enum import Enum
-from http.cookies import Morsel
 
 EMAIL_PATTERN = r"(^[a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+)\.([a-zA-Z0-9-.]+$)"
 PRIVILEGES = ['photos', 'guestbook', 'stream', 'messages', 'events']
@@ -109,19 +109,19 @@ class Cookie(dict):
 
         """
 
-        morsel = Morsel()
+        morsel = http.cookies.Morsel()
         morsel.set(cookie['name'], cookie['value'], cookie['value'])
 
         if cookie['expires']:
             dt = datetime.fromtimestamp(cookie['expires'])
-            expires = dt.strftime(cls.expires_fmt)
-        else:
-            expires = None
-
-        morsel['expires'] = expires
-        morsel['path'] = cookie['path']
-        morsel['domain'] = cookie['domain']
-        morsel['secure'] = cookie['secure']
-        morsel['httponly'] = cookie['httpOnly']
+            morsel['expires'] = dt.strftime(cls.expires_fmt)
+        if cookie['path']:
+            morsel['path'] = cookie['path']
+        if cookie['domain']:
+            morsel['domain'] = cookie['domain']
+        if cookie['secure']:
+            morsel['secure'] = cookie['secure']
+        if cookie['httpOnly']:
+            morsel['httponly'] = cookie['httpOnly']
 
         return morsel
