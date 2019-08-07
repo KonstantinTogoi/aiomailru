@@ -10,6 +10,7 @@ class Browser:
     """A wrapper around pyppeteer.browser.Browser."""
 
     endpoint = os.environ.get('PYPPETEER_BROWSER_ENDPOINT')
+    viewport = os.environ.get('PYPPETEER_BROWSER_VIEWPORT', '800,600')
 
     def __init__(self, browser=None):
         self.browser = browser
@@ -59,7 +60,8 @@ class Browser:
                 break
         else:
             page = blank_page or await self.browser.newPage()
-            await page.setViewport({'width': 1200,  'height': 1920})
+            viewport = ('width', 'height'), map(int, self.viewport.split(','))
+            await page.setViewport(dict(zip(*viewport)))
             await page.setCookie(*cookies)
 
             log.debug('go to %s ..' % url)
