@@ -115,6 +115,9 @@ class Cookie(dict):
         if cookie['expires']:
             dt = datetime.fromtimestamp(cookie['expires'])
             morsel['expires'] = dt.strftime(cls.expires_fmt)
+        else:
+            dt = datetime.fromtimestamp(0.)
+            morsel['expires'] = dt.strftime(cls.expires_fmt)
         if cookie['path']:
             morsel['path'] = cookie['path']
         if cookie['domain']:
