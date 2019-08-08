@@ -176,6 +176,9 @@ class GroupsGetInfo(APIScraperMethod):
 class GroupsJoin(APIScraperMethod):
     """With this method you can join the group."""
 
+    retry_interval = 1
+    num_attempts = 10
+
     class Scripts:
         class Selectors:
             content = (
@@ -236,15 +239,16 @@ class GroupsJoin(APIScraperMethod):
             raise APIScrapperError('A join button not found.')
 
     async def join(self, page):
-        await page.evaluate(self.s.join_click)
-        await asyncio.sleep(1)
+        for i in range(self.num_attempts):
+            await page.evaluate(self.s.join_click)
+            await asyncio.sleep(self.retry_interval)
 
-        if await page.evaluate(self.s.sent_span_visible):
-            return 1
-        elif await page.evaluate(self.s.approved_span_visible):
-            return 1
-        else:
-            raise APIScrapperError('Failed to send join request.')
+            if await page.evaluate(self.s.sent_span_visible):
+                return 1
+            elif await page.evaluate(self.s.approved_span_visible):
+                return 1
+
+        raise APIScrapperError('Failed to send join request.')
 
 
 class StreamGetByAuthor(APIScraperMethod):
