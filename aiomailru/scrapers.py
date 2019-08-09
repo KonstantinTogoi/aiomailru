@@ -92,8 +92,10 @@ class GroupsGet(APIScraperMethod):
 
         _ = await page.screenshot()
         catalog = await page.J(self.ss.catalog)
-        elements = await catalog.JJ(self.ss.item)
+        if catalog is None:
+            return []
 
+        elements = await catalog.JJ(self.ss.item)
         start, stop = offset, min(offset + limit, len(elements))
         limit -= stop - start
 
