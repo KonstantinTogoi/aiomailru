@@ -104,15 +104,13 @@ class GroupsGet(APIScraperMethod):
             link = item['link'].lstrip('/')
             resp = await self.api.session.public_request([link])
             group, *_ = await self.api.users.getInfo(uids=resp['uid'])
-            if ext:
-                groups.append(group)
-            else:
-                groups.append(group['uid'])
+            groups.append(group if ext else group['uid'])
 
-        bar = await page.J(self.ss.bar)
-        css = await page.Jeval(self.ss.bar, self.s.bar_css) or '' if bar else ''
-
-        if limit == 0 or 'display: none;' in css:
+        if limit == 0:
+            return groups
+        elif await page.J(self.ss.bar) is None:
+            return groups
+        elif 'display: none;' in page.Jeval(self.ss.bar, self.s.bar_css) or '':
             return groups
         else:
             await page.evaluate(self.s.click)
