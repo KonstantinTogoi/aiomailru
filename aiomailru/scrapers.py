@@ -77,13 +77,14 @@ class GroupsGet(APIScraperMethod):
 
     async def call(self, **params):
         cookies = self.api.session.cookies
+        session_key = self.api.session.session_key
         if not cookies:
             raise CookieError('Cookie jar is empty. Set cookies.')
 
         ext = params.get('ext', 0)
         limit = params.get('limit', 100)
         offset = params.get('offset', 0)
-        page = await self.api.page(self.url, force=True, cookies=cookies)
+        page = await self.api.page(self.url, session_key, cookies, True)
         return await self.scrape(page, [], ext, limit, offset)
 
     async def scrape(self, page, groups, ext, limit, offset):
@@ -136,6 +137,7 @@ class GroupsGetInfo(APIScraperMethod):
 
     async def call(self, **params):
         cookies = self.api.session.cookies
+        session_key = self.api.session.session_key
         if not cookies:
             raise CookieError('Cookie jar is empty. Set cookies.')
 
@@ -151,7 +153,7 @@ class GroupsGetInfo(APIScraperMethod):
         for info in info_list:
             if 'group_info' in info:
                 url = info['link']
-                page = await self.api.page(url, force=True, cookies=cookies)
+                page = await self.api.page(url, session_key, cookies, True)
                 group_info = await self.scrape(page)
                 info['group_info'].update(group_info)
 
@@ -213,6 +215,7 @@ class GroupsJoin(APIScraperMethod):
 
     async def call(self, **params):
         cookies = self.api.session.cookies
+        session_key = self.api.session.session_key
         if not cookies:
             raise CookieError('Cookie jar is empty. Set cookies.')
 
@@ -225,7 +228,7 @@ class GroupsJoin(APIScraperMethod):
         else:
             link = info[0]['link']
 
-        page = await self.api.page(link, force=True, cookies=cookies)
+        page = await self.api.page(link, session_key, cookies, True)
         return await self.scrape(page)
 
     async def scrape(self, page):
@@ -298,6 +301,7 @@ class StreamGetByAuthor(APIScraperMethod):
         """
 
         cookies = self.api.session.cookies
+        session_key = self.api.session.session_key
         if not cookies:
             raise CookieError('Cookie jar is empty. Set cookies.')
 
@@ -311,7 +315,7 @@ class StreamGetByAuthor(APIScraperMethod):
         else:
             link = info[0]['link']
 
-        page = await self.api.page(link, cookies=cookies)
+        page = await self.api.page(link, session_key, cookies)
         events = []
 
         async for event in self.stream(page):
@@ -341,7 +345,9 @@ class StreamGetByAuthor(APIScraperMethod):
         state, elements = None, []
 
         while state != 'noevents':
-            for element in await history.JJ(self.ss.event):
+            offset = len(elements)
+            elements = await history.JJ(self.ss.event)
+            for element in elements[offset:]:
                 yield await Event.from_element(element)
 
             await page.evaluate(self.s.scroll)
