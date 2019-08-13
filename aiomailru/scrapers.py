@@ -110,7 +110,8 @@ class GroupsGet(APIScraperMethod):
             return groups
         elif await page.J(self.ss.bar) is None:
             return groups
-        elif 'display: none;' in page.Jeval(self.ss.bar, self.s.bar_css) or '':
+        elif 'display: none;' in \
+                (await page.Jeval(self.ss.bar, self.s.bar_css) or ''):
             return groups
         else:
             await page.evaluate(self.s.click)
