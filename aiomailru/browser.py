@@ -35,7 +35,8 @@ class Browser:
 
         return self
 
-    async def page(self, url, session_key, cookies=(), force=False):
+    async def page(self, url, session_key,
+                   cookies=(), force=False, context=None):
         """Makes new page and returns its object.
 
         Args:
@@ -44,6 +45,7 @@ class Browser:
             session_key (str): access token.
             cookies (tuple): cookies for the page.
             force (bool): `True` - to always return a new context.
+            context (pyppeteer.browser.BrowserContext): browser context.
 
         Returns:
             page (pyppeteer.page.Page): page.
@@ -53,7 +55,9 @@ class Browser:
         if not self.browser:
             await self.start()
 
-        if (url, session_key) in self.contexts:
+        if context:
+            pass
+        elif (url, session_key) in self.contexts:
             context = self.contexts[(url, session_key)]
         elif force:
             context = await self.browser.createIncognitoBrowserContext()
