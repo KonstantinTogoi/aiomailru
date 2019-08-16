@@ -11,6 +11,7 @@ class Browser:
 
     endpoint = os.environ.get('PYPPETEER_BROWSER_ENDPOINT')
     viewport = os.environ.get('PYPPETEER_BROWSER_VIEWPORT', '800,600')
+    slow_mo = int(os.environ.get('PYPPETEER_BROWSER_SLOW_MO', '0'))
 
     def __init__(self, browser=None):
         self.browser = browser
@@ -27,10 +28,10 @@ class Browser:
         elif self.endpoint:
             browser_conn = {'browserWSEndpoint': self.endpoint}
             log.debug('connecting: {}'.format(browser_conn))
-            self.browser = await connect(browser_conn)
+            self.browser = await connect(browser_conn, slowmMo=self.slow_mo)
         else:
             log.debug('launching new browser..')
-            self.browser = await launch()
+            self.browser = await launch(slowMo=self.slow_mo)
 
         return self
 
