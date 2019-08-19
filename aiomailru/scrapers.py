@@ -82,12 +82,12 @@ class GroupsGet(APIScraperMethod):
             raise CookieError('Cookie jar is empty. Set cookies.')
 
         page = await self.api.page(self.url, session_key, cookies, True)
+        await page.waitForSelector(self.ss.catalog)
         return await self.scrape(page, [], ext, limit, offset)
 
     async def scrape(self, page, groups, ext, limit, offset):
         """Appends groups from the `page` to the `groups` list."""
 
-        _ = await page.screenshot()
         catalog = await page.J(self.ss.catalog)
         if catalog is None:
             return []
@@ -226,6 +226,7 @@ class GroupsJoin(APIScraperMethod):
             link = info[0]['link']
 
         page = await self.api.page(link, session_key, cookies, True)
+        await page.waitForSelector(self.ss.links)
         return await self.scrape(page)
 
     async def scrape(self, page):
