@@ -39,11 +39,11 @@ class APIScraperMethod(APIMethod):
         name = f'{self.name}.{name}'
         return scrapers.get(name, APIMethod)(self.api, name)
 
-    async def __call__(self, scrape=False, **params):
+    async def __call__(self, *args, scrape=False, **params):
         call = self.call if scrape else super().__call__
-        return await call(**params)
+        return await call(*args, **params)
 
-    async def call(self, **params):
+    async def call(self, *args, **params):
         raise NotImplementedError()
 
 
@@ -75,22 +75,19 @@ class GroupsGet(APIScraperMethod):
     s = Scripts
     ss = Scripts.Selectors
 
-    async def call(self, **params):
+    async def call(self, limit=10, offset=0, ext=0):
         cookies = self.api.session.cookies
         session_key = self.api.session.session_key
         if not cookies:
             raise CookieError('Cookie jar is empty. Set cookies.')
 
-        ext = params.get('ext', 0)
-        limit = params.get('limit', 100)
-        offset = params.get('offset', 0)
         page = await self.api.page(self.url, session_key, cookies, True)
+        await page.waitForSelector(self.ss.catalog)
         return await self.scrape(page, [], ext, limit, offset)
 
     async def scrape(self, page, groups, ext, limit, offset):
         """Appends groups from the `page` to the `groups` list."""
 
-        _ = await page.screenshot()
         catalog = await page.J(self.ss.catalog)
         if catalog is None:
             return []
@@ -136,13 +133,12 @@ class GroupsGetInfo(APIScraperMethod):
     s = Scripts
     ss = Scripts.Selectors
 
-    async def call(self, **params):
+    async def call(self, uids=''):
         cookies = self.api.session.cookies
         session_key = self.api.session.session_key
         if not cookies:
             raise CookieError('Cookie jar is empty. Set cookies.')
 
-        uids = params['uids']
         info_list = await self.api.users.getInfo(uids=uids)
 
         if isinstance(info_list, dict):
@@ -214,13 +210,13 @@ class GroupsJoin(APIScraperMethod):
     s = Scripts
     ss = Scripts.Selectors
 
-    async def call(self, **params):
+    async def call(self, group_id=''):
         cookies = self.api.session.cookies
         session_key = self.api.session.session_key
         if not cookies:
             raise CookieError('Cookie jar is empty. Set cookies.')
 
-        info = await self.api.users.getInfo(uids=params['group_id'])
+        info = await self.api.users.getInfo(uids=group_id)
         if isinstance(info, dict):
             if self.api.session.pass_error:
                 return info
@@ -230,6 +226,7 @@ class GroupsJoin(APIScraperMethod):
             link = info[0]['link']
 
         page = await self.api.page(link, session_key, cookies, True)
+        await page.waitForSelector(self.ss.links)
         return await self.scrape(page)
 
     async def scrape(self, page):
@@ -278,21 +275,18 @@ class StreamGetByAuthor(APIScraperMethod):
     ss = Scripts.Selectors
     sx = Scripts.XPaths
 
-    async def call(self, **params):
-        uid = params.get('uid')
-        skip = params.get('skip', '')
-        limit = params.get('limit', 10)
+    async def call(self, uid='', limit=10, skip=''):
         uuid = skip if skip else uuid4().hex
-        return await self.scrape(uid, skip, limit, uuid)
+        return await self.scrape(uid, limit, skip, uuid)
 
     @lru_cache(maxsize=None)
-    async def scrape(self, uid, skip, limit, uuid):
+    async def scrape(self, uid, limit, skip, uuid):
         """Returns a list of events from user or community stream.
 
         Args:
-            uid (int): User ID.
-            skip (str): Latest event ID to skip.
+            uid (str): User ID.
             limit (int): Number of events to return.
+            skip (str): Latest event ID to skip.
             uuid (str): Unique identifier. May be used to prevent
                 function from returning result from cache.
 
