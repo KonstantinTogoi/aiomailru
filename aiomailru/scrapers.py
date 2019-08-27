@@ -36,6 +36,15 @@ class APIScraperMethod(APIMethod):
         """Common scripts."""
         class Selectors:
             """Common selectors."""
+            content = (
+                'html body '
+                'div.l-content '
+                'div.l-content__center '
+                'div.l-content__center__inner '
+            )
+            main_page = f'{content} div.b-community__main-page '
+            profile = f'{main_page} div.profile '
+            profile_content = f'{profile} div.profile__contentBlock '
 
     s = Scripts
     ss = Scripts.Selectors
@@ -65,17 +74,14 @@ class GroupsGet(scraper):
 
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
-            content = (
-                'html body '
-                'div.l-content '
-                'div.l-content__center '
-                'div.l-content__center__inner '
+            groups = (
+                f'{scraper.ss.content} '
                 'div.groups-catalog '
                 'div.groups-catalog__mine-groups '
                 'div.groups-catalog__small-groups '
             )
-            bar = f'{content} div.groups-catalog__groups-more'
-            catalog = f'{content} div.groups__container'
+            bar = f'{groups} div.groups-catalog__groups-more'
+            catalog = f'{groups} div.groups__container'
             button = f'{bar} span.ui-button-gray'
             item = f'{catalog} div.groups__item'
 
@@ -132,14 +138,7 @@ class GroupsGetInfo(scraper):
 
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
-            main_page = (
-                'html body '
-                'div.l-content '
-                'div.l-content__center '
-                'div.l-content__center__inner '
-                'div.b-community__main-page '
-            )
-            closed_signage = f'{main_page} div.mf_cc'
+            closed_signage = f'{scraper.ss.main_page} div.mf_cc'
 
     s = Scripts
     ss = Scripts.Selectors
@@ -191,16 +190,8 @@ class GroupsJoin(scraper):
 
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
-            content = (
-                'html body '
-                'div.l-content '
-                'div.l-content__center '
-                'div.l-content__center__inner '
-                'div.b-community__main-page '
-                'div.profile div.profile__contentBlock '
-            )
             links = (
-                f'{content} '
+                f'{scraper.ss.profile_content} '
                 'div.profile__activeLinks '
                 'div.profile__activeLinks_community '
             )
@@ -268,8 +259,9 @@ class StreamGetByAuthor(scraper):
 
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
-            history = 'div[data-mru-fragment="home/history"]'
-            event = 'div.b-history-event[data-astat]'
+            feed = f'{scraper.ss.main_page} div.b-community__main-page__feed '
+            history = f'{feed} div.b-history '
+            event = f'{history} div.b-history-event[data-astat] '
 
         class XPaths:
             history = (
