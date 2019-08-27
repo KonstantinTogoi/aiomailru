@@ -32,6 +32,14 @@ class APIScraper(API, Browser):
 class APIScraperMethod(APIMethod):
     """API scraper's method."""
 
+    class Scripts:
+        """Common scripts."""
+        class Selectors:
+            """Common selectors."""
+
+    s = Scripts
+    ss = Scripts.Selectors
+
     def __init__(self, api: APIScraper, name: str):
         super().__init__(api, name)
 
@@ -47,13 +55,16 @@ class APIScraperMethod(APIMethod):
         raise NotImplementedError()
 
 
-class GroupsGet(APIScraperMethod):
+scraper = APIScraperMethod
+
+
+class GroupsGet(scraper):
     """Returns a list of the communities to which the current user belongs."""
 
     url = 'https://my.mail.ru/my/communities'
 
-    class Scripts:
-        class Selectors:
+    class Scripts(scraper.s):
+        class Selectors(scraper.ss):
             content = (
                 'html body '
                 'div.l-content '
@@ -116,11 +127,11 @@ class GroupsGet(APIScraperMethod):
             return await self.scrape(page, groups, ext, limit, len(elements))
 
 
-class GroupsGetInfo(APIScraperMethod):
+class GroupsGetInfo(scraper):
     """Returns information about communities by their IDs."""
 
-    class Scripts:
-        class Selectors:
+    class Scripts(scraper.s):
+        class Selectors(scraper.ss):
             main_page = (
                 'html body '
                 'div.l-content '
@@ -172,14 +183,14 @@ class GroupsGetInfo(APIScraperMethod):
         return group_info
 
 
-class GroupsJoin(APIScraperMethod):
+class GroupsJoin(scraper):
     """With this method you can join the group."""
 
     retry_interval = 1
     num_attempts = 10
 
-    class Scripts:
-        class Selectors:
+    class Scripts(scraper.s):
+        class Selectors(scraper.ss):
             content = (
                 'html body '
                 'div.l-content '
@@ -252,11 +263,11 @@ class GroupsJoin(APIScraperMethod):
         raise APIScrapperError('Failed to send join request.')
 
 
-class StreamGetByAuthor(APIScraperMethod):
+class StreamGetByAuthor(scraper):
     """Returns a list of events from user or community stream by their IDs."""
 
-    class Scripts:
-        class Selectors:
+    class Scripts(scraper.s):
+        class Selectors(scraper.ss):
             history = 'div[data-mru-fragment="home/history"]'
             event = 'div.b-history-event[data-astat]'
 
