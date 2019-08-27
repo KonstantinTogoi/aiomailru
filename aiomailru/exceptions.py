@@ -56,5 +56,16 @@ class APIScrapperError(Error):
         return f'Error {self.code}: {self.msg}'
 
 
+class AccessDeniedError(APIError):
+
+    ERROR = {
+        'error_code': 202,
+        'error_msg': 'Access to this object is denied: you are in blacklist.',
+    }
+
+    def __init__(self):
+        super().__init__(self.ERROR)
+
+
 class CookieError(APIScrapperError):
     code = 1
