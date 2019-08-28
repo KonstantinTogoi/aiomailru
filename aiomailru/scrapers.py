@@ -158,16 +158,12 @@ class GroupsGetInfo(scraper):
 
     @with_cookies
     async def call(self, uids=''):
+        info_list = await self.api.users.getInfo(uids=uids)
+        if isinstance(info_list, dict):
+            return info_list
+
         cookies = self.api.session.cookies
         session_key = self.api.session.session_key
-
-        info_list = await self.api.users.getInfo(uids=uids)
-
-        if isinstance(info_list, dict):
-            if self.api.session.pass_error:
-                return info_list
-            else:
-                raise APIError(info_list)
 
         for info in info_list:
             if 'group_info' in info:
@@ -228,10 +224,7 @@ class GroupsJoin(scraper):
     async def call(self, group_id=''):
         info = await self.api.users.getInfo(uids=group_id)
         if isinstance(info, dict):
-            if self.api.session.pass_error:
-                return info
-            else:
-                raise APIError(info)
+            return info
 
         page = await self.api.page(
             info[0]['link'],
@@ -304,10 +297,7 @@ class StreamGetByAuthor(scraper):
 
         info = await self.api.users.getInfo(uids=uid)
         if isinstance(info, dict):
-            if self.api.session.pass_error:
-                return info
-            else:
-                raise APIError(info)
+            return info
 
         page = await self.api.page(
             info[0]['link'],
