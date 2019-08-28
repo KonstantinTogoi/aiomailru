@@ -46,6 +46,8 @@ class APIScraperMethod(APIMethod):
             profile = f'{main_page} div.profile '
             profile_content = f'{profile} div.profile__contentBlock '
 
+        scroll = 'window.scroll(0, document.body.scrollHeight)'
+
     s = Scripts
     ss = Scripts.Selectors
 
@@ -257,26 +259,18 @@ class GroupsJoin(scraper):
 class StreamGetByAuthor(scraper):
     """Returns a list of events from user or community stream by their IDs."""
 
+    DELAY = 0.3  # delay before checking history's state
+
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
             feed = f'{scraper.ss.main_page} div.b-community__main-page__feed '
             history = f'{feed} div.b-history '
             event = f'{history} div.b-history-event[data-astat] '
 
-        class XPaths:
-            history = (
-                '/html/body/div[@id="boosterCanvas"]'
-                '//div[@data-mru-fragment="home/history"]'
-            )
-            loaded = f'{history}[@data-state][@data-state!="loading"]'
-            loading = f'{history}[@data-state="loading"]'
-
-        scroll = 'window.scroll(0, document.body.scrollHeight)'
-        state = 'n => n.getAttribute("data-state")'
+        history_state = 'n => n.getAttribute("data-state")'
 
     s = Scripts
     ss = Scripts.Selectors
-    sx = Scripts.XPaths
 
     async def call(self, uid='', limit=10, skip=''):
         uuid = skip if skip else uuid4().hex
@@ -338,37 +332,22 @@ class StreamGetByAuthor(scraper):
 
         """
 
-        history = await page.J(self.ss.history)
-        history_ctx = history.executionContext
-        state, elements = None, []
+        state, elements = '', []
 
         while state != 'noevents':
             offset = len(elements)
+            history = await page.J(self.ss.history)
             elements = await history.JJ(self.ss.event)
             for element in elements[offset:]:
                 yield await Event.from_element(element)
 
             await page.evaluate(self.s.scroll)
+            await asyncio.sleep(self.DELAY)
+            state = await page.Jeval(self.ss.history, self.s.history_state)
 
-            tasks = [
-                page.waitForXPath(self.sx.loading),
-                page.waitForXPath(self.sx.loaded),
-            ]
-
-            _, pending = await asyncio.wait(tasks, return_when=FIRST_COMPLETED)
-
-            for task in tasks:
-                if not task.promise.done():
-                    task.promise.set_result(None)
-                    task._cleanup()
-
-            for future in pending:
-                future.cancel()
-
-            state = await history_ctx.evaluate(self.s.state, history)
-            if state == 'loading':
-                await page.waitForXPath(self.sx.loaded)
-                state = await history_ctx.evaluate(self.s.state, history)
+            while state not in ['noevents', 'loaded']:
+                await asyncio.sleep(self.DELAY)
+                state = await page.Jeval(self.ss.history, self.s.history_state)
 
 
 scrapers = {
