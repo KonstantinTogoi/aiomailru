@@ -2,10 +2,9 @@
 
 import asyncio
 import logging
-from functools import lru_cache, wraps
-from uuid import uuid4
+from functools import wraps
 
-from .exceptions import APIError, APIScrapperError, CookieError
+from .exceptions import APIScrapperError, CookieError
 from .api import API, APIMethod
 from .browser import Browser
 from .objects import Event, GroupItem
@@ -112,12 +111,12 @@ class GroupsGet(scraper):
             self.api.session.cookies,
             True
         )
+        _ = await page.screenshot()
         return await self.scrape(page, [], ext, limit, offset)
 
     async def scrape(self, page, groups, ext, limit, offset):
         """Appends groups from the `page` to the `groups` list."""
 
-        _ = await page.screenshot()
         catalog = await page.J(self.ss.catalog)
         if catalog is None:
             return []
@@ -276,25 +275,6 @@ class StreamGetByAuthor(scraper):
 
     @with_cookies
     async def call(self, uid='', limit=10, skip=''):
-        uuid = skip if skip else uuid4().hex
-        return await self.scrape(uid, limit, skip, uuid)
-
-    @lru_cache(maxsize=None)
-    async def scrape(self, uid, limit, skip, uuid):
-        """Returns a list of events from user or community stream.
-
-        Args:
-            uid (str): User ID.
-            limit (int): Number of events to return.
-            skip (str): Latest event ID to skip.
-            uuid (str): Unique identifier. May be used to prevent
-                function from returning result from cache.
-
-        Returns:
-            events (list): Stream events.
-
-        """
-
         info = await self.api.users.getInfo(uids=uid)
         if isinstance(info, dict):
             return info
@@ -304,6 +284,10 @@ class StreamGetByAuthor(scraper):
             self.api.session.session_key,
             self.api.session.cookies
         )
+        return await self.scrape(page, limit, skip)
+
+    async def scrape(self, page, limit, skip):
+        """Returns a list of events from user or community stream."""
 
         events = []
         async for event in self.stream(page):
