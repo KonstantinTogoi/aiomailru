@@ -2,8 +2,7 @@
 
 import asyncio
 import logging
-from concurrent.futures import FIRST_COMPLETED
-from functools import lru_cache
+from functools import lru_cache, wraps
 from uuid import uuid4
 
 from .exceptions import APIError, APIScrapperError, CookieError
@@ -69,6 +68,17 @@ class APIScraperMethod(APIMethod):
 scraper = APIScraperMethod
 
 
+def with_cookies(coro):
+    @wraps(coro)
+    async def wrapper(self: scraper, *args, **kwargs):
+        if not self.api.session.cookies:
+            raise CookieError('Cookie jar is empty. Set cookies.')
+        else:
+            return await coro(self, *args, **kwargs)
+
+    return wrapper
+
+
 class GroupsGet(scraper):
     """Returns a list of the communities to which the current user belongs."""
 
@@ -94,13 +104,14 @@ class GroupsGet(scraper):
     s = Scripts
     ss = Scripts.Selectors
 
+    @with_cookies
     async def call(self, limit=10, offset=0, ext=0):
-        cookies = self.api.session.cookies
-        session_key = self.api.session.session_key
-        if not cookies:
-            raise CookieError('Cookie jar is empty. Set cookies.')
-
-        page = await self.api.page(self.url, session_key, cookies, True)
+        page = await self.api.page(
+            self.url,
+            self.api.session.session_key,
+            self.api.session.cookies,
+            True
+        )
         return await self.scrape(page, [], ext, limit, offset)
 
     async def scrape(self, page, groups, ext, limit, offset):
@@ -145,11 +156,10 @@ class GroupsGetInfo(scraper):
     s = Scripts
     ss = Scripts.Selectors
 
+    @with_cookies
     async def call(self, uids=''):
         cookies = self.api.session.cookies
         session_key = self.api.session.session_key
-        if not cookies:
-            raise CookieError('Cookie jar is empty. Set cookies.')
 
         info_list = await self.api.users.getInfo(uids=uids)
 
@@ -214,22 +224,21 @@ class GroupsJoin(scraper):
     s = Scripts
     ss = Scripts.Selectors
 
+    @with_cookies
     async def call(self, group_id=''):
-        cookies = self.api.session.cookies
-        session_key = self.api.session.session_key
-        if not cookies:
-            raise CookieError('Cookie jar is empty. Set cookies.')
-
         info = await self.api.users.getInfo(uids=group_id)
         if isinstance(info, dict):
             if self.api.session.pass_error:
                 return info
             else:
                 raise APIError(info)
-        else:
-            link = info[0]['link']
 
-        page = await self.api.page(link, session_key, cookies, True)
+        page = await self.api.page(
+            info[0]['link'],
+            self.api.session.session_key,
+            self.api.session.cookies,
+            True
+        )
         await page.waitForSelector(self.ss.links)
         return await self.scrape(page)
 
@@ -272,6 +281,7 @@ class StreamGetByAuthor(scraper):
     s = Scripts
     ss = Scripts.Selectors
 
+    @with_cookies
     async def call(self, uid='', limit=10, skip=''):
         uuid = skip if skip else uuid4().hex
         return await self.scrape(uid, limit, skip, uuid)
@@ -292,24 +302,20 @@ class StreamGetByAuthor(scraper):
 
         """
 
-        cookies = self.api.session.cookies
-        session_key = self.api.session.session_key
-        if not cookies:
-            raise CookieError('Cookie jar is empty. Set cookies.')
-
         info = await self.api.users.getInfo(uids=uid)
-
         if isinstance(info, dict):
             if self.api.session.pass_error:
                 return info
             else:
                 raise APIError(info)
-        else:
-            link = info[0]['link']
 
-        page = await self.api.page(link, session_key, cookies)
+        page = await self.api.page(
+            info[0]['link'],
+            self.api.session.session_key,
+            self.api.session.cookies
+        )
+
         events = []
-
         async for event in self.stream(page):
             if skip:
                 skip = skip if event['id'] != skip else False
