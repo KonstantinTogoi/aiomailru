@@ -4,7 +4,11 @@ import asyncio
 import logging
 from functools import wraps
 
-from .exceptions import APIScrapperError, CookieError
+from .exceptions import (
+    APIScrapperError,
+    CookieError,
+    EmptyObjectsError,
+)
 from .api import API, APIMethod
 from .browser import Browser
 from .objects import Event, GroupItem
@@ -72,10 +76,39 @@ class APIScraperMethod(APIMethod):
         return await call(**params)
 
     async def call(self, **params):
-        raise NotImplementedError()
+        pass
+
+
+class MultiAPIScraperMethod(APIScraperMethod):
+
+    multiarg = 'uids'
+    empty_objects_error = EmptyObjectsError
+
+    async def __call__(self, scrape=False, **params):
+        call = self.multicall if scrape else super().__call__()
+        return await call(**params)
+
+    async def multicall(self, **params):
+        args = params[self.multiarg].split(',')
+        result = []
+        for arg in args:
+            params.pop(self.multiarg)
+            params.update({self.multiarg: arg})
+            try:
+                resp = await self.call(**params)
+                if not isinstance(resp, dict):
+                    result.append(resp[0])
+            except self.empty_objects_error:
+                pass
+
+        if not result and self.empty_objects_error is not None:
+            raise self.empty_objects_error
+        else:
+            return result
 
 
 scraper = APIScraperMethod
+multiscraper = MultiAPIScraperMethod
 
 
 def with_cookies(coro):
@@ -156,33 +189,33 @@ class GroupsGet(scraper):
             return await self.scrape(page, groups, ext, limit, len(elements))
 
 
-class GroupsGetInfo(scraper):
+class GroupsGetInfo(multiscraper):
     """Returns information about communities by their IDs."""
 
-    class Scripts(scraper.s):
-        class Selectors(scraper.ss):
-            closed_signage = f'{scraper.ss.main_page} div.mf_cc'
+    class Scripts(multiscraper.s):
+        class Selectors(multiscraper.ss):
+            closed_signage = f'{multiscraper.ss.main_page} div.mf_cc'
 
     s = Scripts
     ss = Scripts.Selectors
 
     @with_cookies
     async def call(self, *, uids=''):
-        info_list = await self.api.users.getInfo(uids=uids)
-        if isinstance(info_list, dict):
-            return info_list
+        info = await self.api.users.getInfo(uids=uids)
+        if isinstance(info, dict):
+            return info
 
-        cookies = self.api.session.cookies
-        session_key = self.api.session.session_key
+        if 'group_info' in info[0]:
+            page = await self.api.page(
+                info[0]['link'],
+                self.api.session.session_key,
+                self.api.session.cookies,
+                True
+            )
+            group_info = await self.scrape(page)
+            info[0]['group_info'].update(group_info)
 
-        for info in info_list:
-            if 'group_info' in info:
-                url = info['link']
-                page = await self.api.page(url, session_key, cookies, True)
-                group_info = await self.scrape(page)
-                info['group_info'].update(group_info)
-
-        return info_list
+        return info
 
     async def scrape(self, page):
         """Returns additional information about a group.
