@@ -53,11 +53,14 @@ class APIScraperMethod(APIMethod):
         class ScriptTemplates:
             """Common templates of scripts."""
             getattr = 'n => n.getAttribute("%s")'
+            getclass = getattr % 'class'
+            getstyle = getattr % 'style'
             selector = 'document.querySelector("%s")'
             selector_all = 'document.querySelectorAll("%s")'
             click = f'{selector}.click()'
-            getstyle = f'window.getComputedStyle({selector})'
-            visible = f'{getstyle}["display"] != "none"'
+            computed_style = f'window.getComputedStyle({selector})'
+            display = f'{computed_style}["display"]'
+            visible = f'{display} != "none"'
             length = f'{selector_all}.length'
 
         scroll = 'window.scroll(0, document.body.scrollHeight)'
@@ -144,6 +147,8 @@ def with_init(coro):
 class GroupsGet(scraper):
     """Returns a list of the communities to which the current user belongs."""
 
+    DELAY = 0.3  # delay before checking loaded groups
+
     url = 'https://my.mail.ru/my/communities'
 
     class Scripts(scraper.s):
@@ -154,12 +159,15 @@ class GroupsGet(scraper):
                 'div.groups-catalog__mine-groups '
                 'div.groups-catalog__small-groups '
             )
-            bar = f'{groups} div.groups-catalog__groups-more'
-            catalog = f'{groups} div.groups__container'
-            button = f'{bar} span.ui-button-gray'
-            item = f'{catalog} div.groups__item'
+            bar = f'{groups} div.groups-catalog__groups-more '
+            catalog = f'{groups} div.groups__container '
+            button = f'{bar} span.ui-button-gray '
+            progress_button = f'{bar} span.progress '
+            item = f'{catalog} div.groups__item '
 
         click = scraper.st.click % Selectors.button
+        bar_style = scraper.st.getattr % Selectors.bar
+        button_class = scraper.st.getattr % 'class'
         bar_css = scraper.st.getattr % 'style'
         loaded = f'{scraper.st.length % Selectors.item} > %d'
 
@@ -208,6 +216,41 @@ class GroupsGet(scraper):
             await self.page.evaluate(self.s.click)
             await self.page.waitForFunction(self.s.loaded % len(groups))
             return await self.scrape(groups, ext, limit, len(elements))
+
+    async def _scrape(self, ext, limit, offset):
+        groups, cnt = [], 0
+        async for group in self.groups():
+            if cnt < offset:
+                continue
+            else:
+                groups.append(group)
+
+            if len(groups) >= limit:
+                break
+
+        return groups
+
+    async def groups(self):
+        bar_style, elements = '', []
+
+        while not bar_style:
+            offset = len(elements)
+            catalog = await self.page.J(self.ss.catalog)
+            elements = await catalog.JJ(self.ss.item)
+            for element in elements[offset:]:
+                yield await GroupItem.from_element(element)
+
+            await self.page.evaluate(self.s.click)
+            await asyncio.sleep(self.DELAY)
+
+            progress_button = await self.page.J(self.ss.progress_button)
+            while progress_button:
+                await asyncio.sleep(self.DELAY)
+                progress_button = await self.page.J(self.ss.progress_button)
+
+            bar = await self.page.J(self.ss.bar)
+            if bar:
+                bar_style = await self.page.Jeval()
 
 
 class GroupsGetInfo(multiscraper):
