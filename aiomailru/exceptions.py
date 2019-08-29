@@ -64,10 +64,11 @@ class CustomAPIError(Error):
 
 
 class EmptyObjectsError(CustomAPIError):
-    ERROR = {
-        'error_code': 202,
-        'error_msg': 'empty objects',
-    }
+    ERROR = {'error_code': 202, 'error_msg': 'empty objects'}
+
+
+class EmptyGroupsError(CustomAPIError):
+    ERROR = {'error_code': 202, 'error_msg': 'empty groups'}
 
 
 class AccessDeniedError(CustomAPIError):

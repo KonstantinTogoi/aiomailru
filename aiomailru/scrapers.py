@@ -5,9 +5,11 @@ import logging
 from functools import wraps
 
 from .exceptions import (
+    APIError,
     APIScrapperError,
     CookieError,
     EmptyObjectsError,
+    EmptyGroupsError,
 )
 from .api import API, APIMethod
 from .browser import Browser
@@ -83,6 +85,7 @@ class MultiAPIScraperMethod(APIScraperMethod):
 
     multiarg = 'uids'
     empty_objects_error = EmptyObjectsError
+    ignored_errors = (APIError, )
 
     async def __call__(self, scrape=False, **params):
         call = self.multicall if scrape else super().__call__()
@@ -94,15 +97,24 @@ class MultiAPIScraperMethod(APIScraperMethod):
         for arg in args:
             params.pop(self.multiarg)
             params.update({self.multiarg: arg})
+
+            # when `self.api.session.pass_error` is False
             try:
                 resp = await self.call(**params)
-                if not isinstance(resp, dict):
-                    result.append(resp[0])
-            except self.empty_objects_error:
+            except self.ignored_errors:
+                resp = self.empty_objects_error().error
+
+            # when `self.api.session.pass_error` is True
+            if isinstance(resp, dict) and 'error_code' in resp:
                 pass
+            else:
+                result.append(resp[0])
 
         if not result and self.empty_objects_error is not None:
-            raise self.empty_objects_error
+            if self.api.session.pass_error:
+                return self.empty_objects_error().error
+            else:
+                raise self.empty_objects_error
         else:
             return result
 
@@ -222,18 +234,20 @@ class GroupsGetInfo(multiscraper):
     s = Scripts
     ss = Scripts.Selectors
 
+    empty_objects_error = EmptyGroupsError
+    ignored_errors = (APIError, KeyError)  # KeyError when group_info is absent
+
     @with_cookies
     @with_info('uids')
     async def call(self, info, *, uids=''):
-        if 'group_info' in info:
-            page = await self.api.page(
-                info['link'],
-                self.api.session.session_key,
-                self.api.session.cookies,
-                True
-            )
-            group_info = await self.scrape(page)
-            info['group_info'].update(group_info)
+        page = await self.api.page(
+            info['link'],
+            self.api.session.session_key,
+            self.api.session.cookies,
+            True
+        )
+        group_info = await self.scrape(page)
+        info['group_info'].update(group_info)
 
         return [info]
 
