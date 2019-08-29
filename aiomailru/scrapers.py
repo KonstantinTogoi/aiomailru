@@ -46,8 +46,19 @@ class APIScraperMethod(APIMethod):
 
         scroll = 'window.scroll(0, document.body.scrollHeight)'
 
+    class ScriptTemplates:
+        """Common templates of scripts."""
+        getattr = 'n => n.getAttribute("%s")'
+        selector = 'document.querySelector("%s")'
+        selector_all = 'document.querySelectorAll("%s")'
+        click = f'{selector}.click()'
+        getstyle = f'window.getComputedStyle({selector})'
+        visible = f'{getstyle}["display"] != "none"'
+        length = f'{selector_all}.length'
+
     s = Scripts
     ss = Scripts.Selectors
+    st = ScriptTemplates
 
     def __init__(self, api: APIScraper, name: str):
         super().__init__(api, name)
@@ -96,9 +107,9 @@ class GroupsGet(scraper):
             button = f'{bar} span.ui-button-gray'
             item = f'{catalog} div.groups__item'
 
-        click = f'document.querySelector("{Selectors.button}").click()'
-        bar_css = 'n => n.getAttribute("style")'
-        loaded = f'document.querySelectorAll("{Selectors.item}").length > {{}}'
+        click = scraper.st.click % Selectors.button
+        bar_css = scraper.st.getattr % 'style'
+        loaded = f'{scraper.st.length % Selectors.item} > %d'
 
     s = Scripts
     ss = Scripts.Selectors
@@ -141,7 +152,7 @@ class GroupsGet(scraper):
             return groups
         else:
             await page.evaluate(self.s.click)
-            await page.waitForFunction(self.s.loaded.format(len(groups)))
+            await page.waitForFunction(self.s.loaded % len(groups))
             return await self.scrape(page, groups, ext, limit, len(elements))
 
 
@@ -207,14 +218,11 @@ class GroupsJoin(scraper):
             approved_span = f'{links} span.profile__activeLinks_link_inGroup'
             auth_span = f'{links} div.l-popup_community-authorization'
 
-        selector = 'document.querySelector("{}")'
-        get_style = f'window.getComputedStyle({selector})'
-        visible = f'{get_style}["display"] != "none"'
-        join_span_visible = visible.format(Selectors.join_span)
-        sent_span_visible = visible.format(Selectors.sent_span)
-        approved_span_visible = visible.format(Selectors.approved_span)
+        join_span_visible = scraper.st.visible % Selectors.join_span
+        sent_span_visible = scraper.st.visible % Selectors.sent_span
+        approved_span_visible = scraper.st.visible % Selectors.approved_span
 
-        join_click = f'document.querySelector("{Selectors.join_span}").click();'
+        join_click = f'{scraper.st.click % Selectors.join_span}'
 
     s = Scripts
     ss = Scripts.Selectors
@@ -268,7 +276,7 @@ class StreamGetByAuthor(scraper):
             history = f'{feed} div.b-history '
             event = f'{history} div.b-history-event[data-astat] '
 
-        history_state = 'n => n.getAttribute("data-state")'
+        history_state = scraper.st.getattr % 'data-state'
 
     s = Scripts
     ss = Scripts.Selectors
