@@ -127,7 +127,7 @@ scraper = APIScraperMethod
 multiscraper = APIScraperMultiMethod
 
 
-def with_page(coro):
+def with_init(coro):
     @wraps(coro)
     async def wrapper(self: scraper, **kwargs):
         if not self.api.session.cookies:
@@ -175,7 +175,7 @@ class GroupsGet(scraper):
         _ = await self.page.screenshot()
         return True
 
-    @with_page
+    @with_init
     async def call(self, *, limit=10, offset=0, ext=0):
         return await self.scrape([], ext, limit, offset)
 
@@ -236,7 +236,7 @@ class GroupsGetInfo(multiscraper):
         _ = await self.page.screenshot()
         return True
 
-    @with_page
+    @with_init
     async def call(self, *, uids=''):
         return await self.scrape(uids)
 
@@ -296,7 +296,7 @@ class GroupsJoin(scraper):
         _ = await self.page.screenshot()
         return True
 
-    @with_page
+    @with_init
     async def call(self, *, group_id=''):
         return await self.scrape()
 
@@ -351,7 +351,7 @@ class StreamGetByAuthor(scraper):
         _ = await self.page.screenshot()
         return True
 
-    @with_page
+    @with_init
     async def call(self, *, uid='', limit=10, skip=''):
         return await self.scrape(limit, skip)
 
