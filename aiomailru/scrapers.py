@@ -81,7 +81,7 @@ class APIScraperMethod(APIMethod):
         pass
 
 
-class MultiAPIScraperMethod(APIScraperMethod):
+class APIScraperMultiMethod(APIScraperMethod):
 
     multiarg = 'uids'
     empty_objects_error = EmptyObjectsError
@@ -120,7 +120,7 @@ class MultiAPIScraperMethod(APIScraperMethod):
 
 
 scraper = APIScraperMethod
-multiscraper = MultiAPIScraperMethod
+multiscraper = APIScraperMultiMethod
 
 
 def with_cookies(coro):
