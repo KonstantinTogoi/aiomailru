@@ -44,21 +44,21 @@ class APIScraperMethod(APIMethod):
             profile = f'{main_page} div.profile '
             profile_content = f'{profile} div.profile__contentBlock '
 
-        scroll = 'window.scroll(0, document.body.scrollHeight)'
+        class ScriptTemplates:
+            """Common templates of scripts."""
+            getattr = 'n => n.getAttribute("%s")'
+            selector = 'document.querySelector("%s")'
+            selector_all = 'document.querySelectorAll("%s")'
+            click = f'{selector}.click()'
+            getstyle = f'window.getComputedStyle({selector})'
+            visible = f'{getstyle}["display"] != "none"'
+            length = f'{selector_all}.length'
 
-    class ScriptTemplates:
-        """Common templates of scripts."""
-        getattr = 'n => n.getAttribute("%s")'
-        selector = 'document.querySelector("%s")'
-        selector_all = 'document.querySelectorAll("%s")'
-        click = f'{selector}.click()'
-        getstyle = f'window.getComputedStyle({selector})'
-        visible = f'{getstyle}["display"] != "none"'
-        length = f'{selector_all}.length'
+        scroll = 'window.scroll(0, document.body.scrollHeight)'
 
     s = Scripts
     ss = Scripts.Selectors
-    st = ScriptTemplates
+    st = Scripts.ScriptTemplates
 
     def __init__(self, api: APIScraper, name: str):
         super().__init__(api, name)
