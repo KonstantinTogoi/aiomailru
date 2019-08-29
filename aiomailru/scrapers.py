@@ -246,12 +246,9 @@ class GroupsGetInfo(multiscraper):
             self.api.session.cookies,
             True
         )
-        group_info = await self.scrape(page)
-        info['group_info'].update(group_info)
+        return await self.scrape(page, info)
 
-        return [info]
-
-    async def scrape(self, page):
+    async def scrape(self, page, info):
         """Returns additional information about a group.
 
         Object fields that are scraped here:
@@ -262,9 +259,8 @@ class GroupsGetInfo(multiscraper):
 
         signage = await page.J(self.ss.closed_signage)
         is_closed = True if signage is not None else False
-        group_info = {'is_closed': is_closed}
-
-        return group_info
+        info['group_info'].update({'is_closed': is_closed})
+        return [info]
 
 
 class GroupsJoin(scraper):
