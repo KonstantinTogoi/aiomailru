@@ -30,6 +30,6 @@ class APIMethod:
     def __getattr__(self, name):
         return APIMethod(self.api, f'{self.name}.{name}')
 
-    async def __call__(self, *args, **params):
+    async def __call__(self, **params):
         params['method'] = self.name
         return await self.api.session.request(params=params)

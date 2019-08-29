@@ -67,11 +67,11 @@ class APIScraperMethod(APIMethod):
         name = f'{self.name}.{name}'
         return scrapers.get(name, APIMethod)(self.api, name)
 
-    async def __call__(self, *args, scrape=False, **params):
+    async def __call__(self, scrape=False, **params):
         call = self.call if scrape else super().__call__
-        return await call(*args, **params)
+        return await call(**params)
 
-    async def call(self, *args, **params):
+    async def call(self, **params):
         raise NotImplementedError()
 
 
@@ -80,11 +80,11 @@ scraper = APIScraperMethod
 
 def with_cookies(coro):
     @wraps(coro)
-    async def wrapper(self: scraper, *args, **kwargs):
+    async def wrapper(self: scraper, **kwargs):
         if not self.api.session.cookies:
             raise CookieError('Cookie jar is empty. Set cookies.')
         else:
-            return await coro(self, *args, **kwargs)
+            return await coro(self, **kwargs)
 
     return wrapper
 
@@ -115,7 +115,7 @@ class GroupsGet(scraper):
     ss = Scripts.Selectors
 
     @with_cookies
-    async def call(self, limit=10, offset=0, ext=0):
+    async def call(self, *, limit=10, offset=0, ext=0):
         page = await self.api.page(
             self.url,
             self.api.session.session_key,
@@ -167,7 +167,7 @@ class GroupsGetInfo(scraper):
     ss = Scripts.Selectors
 
     @with_cookies
-    async def call(self, uids=''):
+    async def call(self, *, uids=''):
         info_list = await self.api.users.getInfo(uids=uids)
         if isinstance(info_list, dict):
             return info_list
@@ -228,7 +228,7 @@ class GroupsJoin(scraper):
     ss = Scripts.Selectors
 
     @with_cookies
-    async def call(self, group_id=''):
+    async def call(self, *, group_id=''):
         info = await self.api.users.getInfo(uids=group_id)
         if isinstance(info, dict):
             return info
@@ -282,7 +282,7 @@ class StreamGetByAuthor(scraper):
     ss = Scripts.Selectors
 
     @with_cookies
-    async def call(self, uid='', limit=10, skip=''):
+    async def call(self, *, uid='', limit=10, skip=''):
         info = await self.api.users.getInfo(uids=uid)
         if isinstance(info, dict):
             return info
