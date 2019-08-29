@@ -68,6 +68,7 @@ class APIScraperMethod(APIMethod):
 
     def __init__(self, api: APIScraper, name: str):
         super().__init__(api, name)
+        self.page = None
 
     def __getattr__(self, name):
         name = f'{self.name}.{name}'
@@ -77,8 +78,11 @@ class APIScraperMethod(APIMethod):
         call = self.call if scrape else super().__call__
         return await call(**params)
 
-    async def call(self, **params):
+    async def init(self, **params):
         pass
+
+    async def call(self, **params):
+        await self.init(**params)
 
 
 class APIScraperMultiMethod(APIScraperMethod):
@@ -123,38 +127,18 @@ scraper = APIScraperMethod
 multiscraper = APIScraperMultiMethod
 
 
-def with_cookies(coro):
+def with_page(coro):
     @wraps(coro)
     async def wrapper(self: scraper, **kwargs):
         if not self.api.session.cookies:
             raise CookieError('Cookie jar is empty. Set cookies.')
+        init_result = await self.init(**kwargs)
+        if isinstance(init_result, dict):
+            return init_result
         else:
             return await coro(self, **kwargs)
 
     return wrapper
-
-
-class WithInfo:
-    """Class-based decorator. Passes user's info to decorated scraper."""
-
-    def __init__(self, arg_name):
-        self.uid_arg_name = arg_name
-
-    def __call__(self, coro):
-        @wraps(coro)
-        async def wrapper(slf: scraper, **kwargs):
-            uids = kwargs[self.uid_arg_name]
-            print('get info by arg', self.uid_arg_name, 'value=', uids)
-            info = await slf.api.users.getInfo(uids=uids)
-            if isinstance(info, dict):
-                return info
-            else:
-                return await coro(slf, info[0], **kwargs)
-
-        return wrapper
-
-
-with_info = WithInfo
 
 
 class GroupsGet(scraper):
@@ -182,21 +166,23 @@ class GroupsGet(scraper):
     s = Scripts
     ss = Scripts.Selectors
 
-    @with_cookies
-    async def call(self, *, limit=10, offset=0, ext=0):
-        page = await self.api.page(
+    async def init(self, limit=10, offset=0, ext=0):
+        self.page = await self.api.page(
             self.url,
             self.api.session.session_key,
             self.api.session.cookies,
-            True
         )
-        _ = await page.screenshot()
-        return await self.scrape(page, [], ext, limit, offset)
+        _ = await self.page.screenshot()
+        return True
 
-    async def scrape(self, page, groups, ext, limit, offset):
+    @with_page
+    async def call(self, *, limit=10, offset=0, ext=0):
+        return await self.scrape([], ext, limit, offset)
+
+    async def scrape(self, groups, ext, limit, offset):
         """Appends groups from the `page` to the `groups` list."""
 
-        catalog = await page.J(self.ss.catalog)
+        catalog = await self.page.J(self.ss.catalog)
         if catalog is None:
             return []
 
@@ -213,15 +199,15 @@ class GroupsGet(scraper):
 
         if limit == 0:
             return groups
-        elif await page.J(self.ss.bar) is None:
+        elif await self.page.J(self.ss.bar) is None:
             return groups
         elif 'display: none;' in \
-                (await page.Jeval(self.ss.bar, self.s.bar_css) or ''):
+                (await self.page.Jeval(self.ss.bar, self.s.bar_css) or ''):
             return groups
         else:
-            await page.evaluate(self.s.click)
-            await page.waitForFunction(self.s.loaded % len(groups))
-            return await self.scrape(page, groups, ext, limit, len(elements))
+            await self.page.evaluate(self.s.click)
+            await self.page.waitForFunction(self.s.loaded % len(groups))
+            return await self.scrape(groups, ext, limit, len(elements))
 
 
 class GroupsGetInfo(multiscraper):
@@ -237,18 +223,24 @@ class GroupsGetInfo(multiscraper):
     empty_objects_error = EmptyGroupsError
     ignored_errors = (APIError, KeyError)  # KeyError when group_info is absent
 
-    @with_cookies
-    @with_info('uids')
-    async def call(self, info, *, uids=''):
-        page = await self.api.page(
-            info['link'],
+    async def init(self, uids=''):
+        info = await self.api.users.getInfo(uids=uids)
+        if isinstance(info, dict):
+            return info
+        self.page = await self.api.page(
+            info[0]['link'],
             self.api.session.session_key,
             self.api.session.cookies,
-            True
+            True,
         )
-        return await self.scrape(page, info)
+        _ = await self.page.screenshot()
+        return True
 
-    async def scrape(self, page, info):
+    @with_page
+    async def call(self, *, uids=''):
+        return await self.scrape(uids)
+
+    async def scrape(self, uids):
         """Returns additional information about a group.
 
         Object fields that are scraped here:
@@ -257,10 +249,11 @@ class GroupsGetInfo(multiscraper):
 
         """
 
-        signage = await page.J(self.ss.closed_signage)
+        info = await self.api.users.getInfo(uids=uids)
+        signage = await self.page.J(self.ss.closed_signage)
         is_closed = True if signage is not None else False
-        info['group_info'].update({'is_closed': is_closed})
-        return [info]
+        info[0]['group_info'].update({'is_closed': is_closed})
+        return info
 
 
 class GroupsJoin(scraper):
@@ -290,36 +283,41 @@ class GroupsJoin(scraper):
     s = Scripts
     ss = Scripts.Selectors
 
-    @with_cookies
-    @with_info('group_id')
-    async def call(self, info, *, group_id=''):
-        page = await self.api.page(
-            info['link'],
+    async def init(self, group_id=''):
+        info = await self.api.users.getInfo(uids=group_id)
+        if isinstance(info, dict):
+            return info
+        self.page = await self.api.page(
+            info[0]['link'],
             self.api.session.session_key,
             self.api.session.cookies,
-            True
+            True,
         )
-        await page.waitForSelector(self.ss.links)
-        return await self.scrape(page)
+        _ = await self.page.screenshot()
+        return True
 
-    async def scrape(self, page):
-        if await page.evaluate(self.s.join_span_visible):
-            return await self.join(page)
-        elif await page.evaluate(self.s.sent_span_visible):
+    @with_page
+    async def call(self, *, group_id=''):
+        return await self.scrape()
+
+    async def scrape(self):
+        if await self.page.evaluate(self.s.join_span_visible):
+            return await self.join()
+        elif await self.page.evaluate(self.s.sent_span_visible):
             return 1
-        elif await page.evaluate(self.s.approved_span_visible):
+        elif await self.page.evaluate(self.s.approved_span_visible):
             return 1
         else:
             raise APIScrapperError('A join button not found.')
 
-    async def join(self, page):
+    async def join(self):
         for i in range(self.num_attempts):
-            await page.evaluate(self.s.join_click)
+            await self.page.evaluate(self.s.join_click)
             await asyncio.sleep(self.retry_interval)
 
-            if await page.evaluate(self.s.sent_span_visible):
+            if await self.page.evaluate(self.s.sent_span_visible):
                 return 1
-            elif await page.evaluate(self.s.approved_span_visible):
+            elif await self.page.evaluate(self.s.approved_span_visible):
                 return 1
 
         raise APIScrapperError('Failed to send join request.')
@@ -341,21 +339,27 @@ class StreamGetByAuthor(scraper):
     s = Scripts
     ss = Scripts.Selectors
 
-    @with_cookies
-    @with_info('uid')
-    async def call(self, info, *, uid='', limit=10, skip=''):
-        page = await self.api.page(
-            info['link'],
+    async def init(self, uid='', limit=10, skip=''):
+        info = await self.api.users.getInfo(uids=uid)
+        if isinstance(info, dict):
+            return info
+        self.page = await self.api.page(
+            info[0]['link'],
             self.api.session.session_key,
-            self.api.session.cookies
+            self.api.session.cookies,
         )
-        return await self.scrape(page, limit, skip)
+        _ = await self.page.screenshot()
+        return True
 
-    async def scrape(self, page, limit, skip):
+    @with_page
+    async def call(self, *, uid='', limit=10, skip=''):
+        return await self.scrape(limit, skip)
+
+    async def scrape(self, limit, skip):
         """Returns a list of events from user or community stream."""
 
         events = []
-        async for event in self.stream(page):
+        async for event in self.stream():
             if skip:
                 skip = skip if event['id'] != skip else False
             else:
@@ -366,33 +370,26 @@ class StreamGetByAuthor(scraper):
 
         return events
 
-    async def stream(self, page):
-        """Yields stream events from the beginning to the end.
-
-        Args:
-            page (pyppeteer.page.Page): Page with the stream.
-
-        Yields:
-            event (Event): Stream event.
-
-        """
+    async def stream(self):
+        """Yields stream events from the beginning to the end."""
 
         state, elements = '', []
 
         while state != 'noevents':
             offset = len(elements)
-            history = await page.J(self.ss.history)
+            history = await self.page.J(self.ss.history)
             elements = await history.JJ(self.ss.event)
             for element in elements[offset:]:
                 yield await Event.from_element(element)
 
-            await page.evaluate(self.s.scroll)
+            await self.page.evaluate(self.s.scroll)
             await asyncio.sleep(self.DELAY)
-            state = await page.Jeval(self.ss.history, self.s.history_state)
+            state = await self.page.Jeval(self.ss.history, self.s.history_state)
 
             while state not in ['noevents', 'loaded']:
                 await asyncio.sleep(self.DELAY)
-                state = await page.Jeval(self.ss.history, self.s.history_state)
+                state = await self.page.Jeval(
+                    self.ss.history, self.s.history_state)
 
 
 scrapers = {
