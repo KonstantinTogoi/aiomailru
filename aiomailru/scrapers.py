@@ -122,6 +122,29 @@ def with_cookies(coro):
     return wrapper
 
 
+class WithInfo:
+    """Class-based decorator. Passes user's info to decorated scraper."""
+
+    def __init__(self, arg_name):
+        self.uid_arg_name = arg_name
+
+    def __call__(self, coro):
+        @wraps(coro)
+        async def wrapper(slf: scraper, **kwargs):
+            uids = kwargs[self.uid_arg_name]
+            print('get info by arg', self.uid_arg_name, 'value=', uids)
+            info = await slf.api.users.getInfo(uids=uids)
+            if isinstance(info, dict):
+                return info
+            else:
+                return await coro(slf, info[0], **kwargs)
+
+        return wrapper
+
+
+with_info = WithInfo
+
+
 class GroupsGet(scraper):
     """Returns a list of the communities to which the current user belongs."""
 
@@ -200,22 +223,19 @@ class GroupsGetInfo(multiscraper):
     ss = Scripts.Selectors
 
     @with_cookies
-    async def call(self, *, uids=''):
-        info = await self.api.users.getInfo(uids=uids)
-        if isinstance(info, dict):
-            return info
-
-        if 'group_info' in info[0]:
+    @with_info('uids')
+    async def call(self, info, *, uids=''):
+        if 'group_info' in info:
             page = await self.api.page(
-                info[0]['link'],
+                info['link'],
                 self.api.session.session_key,
                 self.api.session.cookies,
                 True
             )
             group_info = await self.scrape(page)
-            info[0]['group_info'].update(group_info)
+            info['group_info'].update(group_info)
 
-        return info
+        return [info]
 
     async def scrape(self, page):
         """Returns additional information about a group.
@@ -261,13 +281,10 @@ class GroupsJoin(scraper):
     ss = Scripts.Selectors
 
     @with_cookies
-    async def call(self, *, group_id=''):
-        info = await self.api.users.getInfo(uids=group_id)
-        if isinstance(info, dict):
-            return info
-
+    @with_info('group_id')
+    async def call(self, info, *, group_id=''):
         page = await self.api.page(
-            info[0]['link'],
+            info['link'],
             self.api.session.session_key,
             self.api.session.cookies,
             True
@@ -315,13 +332,10 @@ class StreamGetByAuthor(scraper):
     ss = Scripts.Selectors
 
     @with_cookies
-    async def call(self, *, uid='', limit=10, skip=''):
-        info = await self.api.users.getInfo(uids=uid)
-        if isinstance(info, dict):
-            return info
-
+    @with_info('uid')
+    async def call(self, info, *, uid='', limit=10, skip=''):
         page = await self.api.page(
-            info[0]['link'],
+            info['link'],
             self.api.session.session_key,
             self.api.session.cookies
         )
