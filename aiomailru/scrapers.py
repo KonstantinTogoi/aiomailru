@@ -41,14 +41,14 @@ class APIScraperMethod(APIMethod):
         class Selectors:
             """Common selectors."""
             content = (
-                'html body '
-                'div.l-content '
-                'div.l-content__center '
-                'div.l-content__center__inner '
+                ' html body'
+                ' div.l-content'
+                ' div.l-content__center'
+                ' div.l-content__center__inner'
             )
-            main_page = f'{content} div.b-community__main-page '
-            profile = f'{main_page} div.profile '
-            profile_content = f'{profile} div.profile__contentBlock '
+            main_page = f'{content} div.b-community__main-page'
+            profile = f'{main_page} div.profile'
+            profile_content = f'{profile} div.profile__contentBlock'
 
         class ScriptTemplates:
             """Common templates of scripts."""
@@ -154,16 +154,16 @@ class GroupsGet(scraper):
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
             groups = (
-                f'{scraper.ss.content} '
-                'div.groups-catalog '
-                'div.groups-catalog__mine-groups '
-                'div.groups-catalog__small-groups '
+                f'{scraper.ss.content}'
+                ' div.groups-catalog'
+                ' div.groups-catalog__mine-groups'
+                ' div.groups-catalog__small-groups'
             )
-            bar = f'{groups} div.groups-catalog__groups-more '
-            catalog = f'{groups} div.groups__container '
-            button = f'{bar} span.ui-button-gray '
-            progress_button = f'{bar} span.progress '
-            item = f'{catalog} div.groups__item '
+            bar = f'{groups} div.groups-catalog__groups-more'
+            catalog = f'{groups} div.groups__container'
+            button = f'{bar} span.ui-button-gray'
+            progress_button = f'{bar} span.progress'
+            item = f'{catalog} div.groups__item'
 
         click = scraper.st.click % Selectors.button
         bar_style = scraper.st.getattr % Selectors.bar
@@ -202,7 +202,11 @@ class GroupsGet(scraper):
             item = await GroupItem.from_element(elements[i])
             link = item['link'].lstrip('/')
             resp = await self.api.session.public_request([link])
-            group, *_ = await self.api.users.getInfo(uids=resp['uid'])
+            group = await self.api.users.getInfo(uids=resp['uid'])
+            if isinstance(group, dict):
+                return group
+            else:
+                group = group[0]
             groups.append(group if ext else group['uid'])
 
         if limit == 0:
@@ -308,9 +312,9 @@ class GroupsJoin(scraper):
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
             links = (
-                f'{scraper.ss.profile_content} '
-                'div.profile__activeLinks '
-                'div.profile__activeLinks_community '
+                f'{scraper.ss.profile_content}'
+                ' div.profile__activeLinks'
+                ' div.profile__activeLinks_community'
             )
             join_span = f'{links} span.profile__activeLinks_button_enter'
             sent_span = f'{links} span.profile__activeLinks_link_modarated'
@@ -373,9 +377,9 @@ class StreamGetByAuthor(scraper):
 
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
-            feed = f'{scraper.ss.main_page} div.b-community__main-page__feed '
-            history = f'{feed} div.b-history '
-            event = f'{history} div.b-history-event[data-astat] '
+            feed = f'{scraper.ss.main_page} div.b-community__main-page__feed'
+            history = f'{feed} div.b-history'
+            event = f'{history} div.b-history-event[data-astat]'
 
         history_state = scraper.st.getattr % 'data-state'
 
