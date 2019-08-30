@@ -67,7 +67,7 @@ class APIScraperMethod(APIMethod):
 
     s = Scripts
     ss = Scripts.Selectors
-    st = Scripts.ScriptTemplates
+    sst = Scripts.ScriptTemplates
 
     def __init__(self, api: APIScraper, name: str):
         super().__init__(api, name)
@@ -165,11 +165,11 @@ class GroupsGet(scraper):
             progress_button = f'{bar} span.progress'
             item = f'{catalog} div.groups__item'
 
-        click = scraper.st.click % Selectors.button
-        bar_style = scraper.st.getattr % Selectors.bar
-        button_class = scraper.st.getattr % 'class'
-        bar_css = scraper.st.getattr % 'style'
-        loaded = f'{scraper.st.length % Selectors.item} > %d'
+        click = scraper.sst.click % Selectors.button
+        bar_style = scraper.sst.getattr % Selectors.bar
+        button_class = scraper.sst.getattr % 'class'
+        bar_css = scraper.sst.getattr % 'style'
+        loaded = f'{scraper.sst.length % Selectors.item} > %d'
 
     s = Scripts
     ss = Scripts.Selectors
@@ -321,11 +321,11 @@ class GroupsJoin(scraper):
             approved_span = f'{links} span.profile__activeLinks_link_inGroup'
             auth_span = f'{links} div.l-popup_community-authorization'
 
-        join_span_visible = scraper.st.visible % Selectors.join_span
-        sent_span_visible = scraper.st.visible % Selectors.sent_span
-        approved_span_visible = scraper.st.visible % Selectors.approved_span
+        join_span_visible = scraper.sst.visible % Selectors.join_span
+        sent_span_visible = scraper.sst.visible % Selectors.sent_span
+        approved_span_visible = scraper.sst.visible % Selectors.approved_span
 
-        join_click = f'{scraper.st.click % Selectors.join_span}'
+        join_click = f'{scraper.sst.click % Selectors.join_span}'
 
     s = Scripts
     ss = Scripts.Selectors
@@ -381,7 +381,7 @@ class StreamGetByAuthor(scraper):
             history = f'{feed} div.b-history'
             event = f'{history} div.b-history-event[data-astat]'
 
-        history_state = scraper.st.getattr % 'data-state'
+        history_state = scraper.sst.getattr % 'data-state'
 
     s = Scripts
     ss = Scripts.Selectors
