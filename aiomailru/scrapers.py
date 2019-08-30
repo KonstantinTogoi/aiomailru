@@ -213,7 +213,7 @@ class GroupsGet(scraper):
         return groups
 
     async def groups(self, ext):
-        visible_bar, button, elements = True, True, []
+        visible_bar, elements = True, []
 
         while visible_bar:
             offset = len(elements)
@@ -229,8 +229,7 @@ class GroupsGet(scraper):
             if await self.page.J(self.ss.button):
                 await self.page.evaluate(self.s.click)
 
-            await asyncio.sleep(self.DELAY)
-            progress_button = await self.page.J(self.ss.progress_button)
+            progress_button = True
             while progress_button:
                 await asyncio.sleep(self.DELAY)
                 progress_button = await self.page.J(self.ss.progress_button)
@@ -354,12 +353,17 @@ class GroupsJoin(scraper):
 class StreamGetByAuthor(scraper):
     """Returns a list of events from user or community stream by their IDs."""
 
-    DELAY = 0.3  # delay before checking history's state
+    DELAY = 0.05  # delay before checking history's state
 
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
             feed = f'{scraper.ss.main_page} div.b-community__main-page__feed'
-            stream = f'{feed} div.b-history'
+            stream = f'{feed} div.b-history[data-state]'
+            updating_stream = f'{stream}[data-state=""]'
+            loading_stream = f'{stream}[data-state="loading"]'
+            loaded_stream = f'{stream}[data-state="loaded"]'
+            ended_stream = f'{stream}[data-state="noevents"]'
+            content = f'{feed} div.content-wrapper'
             event = f'{stream} div.b-history-event[data-astat]'
 
         stream_state = scraper.sst.getattr % 'data-state'
@@ -401,22 +405,30 @@ class StreamGetByAuthor(scraper):
     async def stream(self):
         """Yields stream events from the beginning to the end."""
 
-        st, elements = '', []
+        stream, elements = True, []
 
-        while st != 'noevents':
+        while stream:
             offset = len(elements)
-            stream = await self.page.J(self.ss.stream)
-            elements = await stream.JJ(self.ss.event)
+            content = await self.page.J(self.ss.content)
+            elements = await content.JJ(self.ss.event)
             for element in elements[offset:]:
                 yield await Event.from_element(element)
 
             await self.page.evaluate(self.s.scroll)
 
-            await asyncio.sleep(self.DELAY)
-            st = await self.page.Jeval(self.ss.stream, self.s.stream_state)
-            while st not in ['noevents', 'loaded']:
+            loading_stream, updating_stream = True, True
+            while loading_stream or updating_stream:
+                stream = False
+                while not stream:
+                    await asyncio.sleep(self.DELAY)
+                    stream = await self.page.waitForSelector(self.ss.stream)
+
                 await asyncio.sleep(self.DELAY)
-                st = await self.page.Jeval(self.ss.stream, self.s.stream_state)
+                loading_stream = await self.page.J(self.ss.loading_stream)
+                updating_stream = await self.page.J(self.ss.updating_stream)
+
+            stream = await self.page.J(self.ss.stream)
+            print('"loaded" is', stream)
 
 
 scrapers = {
