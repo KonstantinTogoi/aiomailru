@@ -359,10 +359,10 @@ class StreamGetByAuthor(scraper):
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
             feed = f'{scraper.ss.main_page} div.b-community__main-page__feed'
-            history = f'{feed} div.b-history'
-            event = f'{history} div.b-history-event[data-astat]'
+            stream = f'{feed} div.b-history'
+            event = f'{stream} div.b-history-event[data-astat]'
 
-        history_state = scraper.sst.getattr % 'data-state'
+        stream_state = scraper.sst.getattr % 'data-state'
 
     s = Scripts
     ss = Scripts.Selectors
@@ -401,23 +401,22 @@ class StreamGetByAuthor(scraper):
     async def stream(self):
         """Yields stream events from the beginning to the end."""
 
-        state, elements = '', []
+        st, elements = '', []
 
-        while state != 'noevents':
+        while st != 'noevents':
             offset = len(elements)
-            history = await self.page.J(self.ss.history)
-            elements = await history.JJ(self.ss.event)
+            stream = await self.page.J(self.ss.stream)
+            elements = await stream.JJ(self.ss.event)
             for element in elements[offset:]:
                 yield await Event.from_element(element)
 
             await self.page.evaluate(self.s.scroll)
-            await asyncio.sleep(self.DELAY)
-            state = await self.page.Jeval(self.ss.history, self.s.history_state)
 
-            while state not in ['noevents', 'loaded']:
+            await asyncio.sleep(self.DELAY)
+            st = await self.page.Jeval(self.ss.stream, self.s.stream_state)
+            while st not in ['noevents', 'loaded']:
                 await asyncio.sleep(self.DELAY)
-                state = await self.page.Jeval(
-                    self.ss.history, self.s.history_state)
+                st = await self.page.Jeval(self.ss.stream, self.s.stream_state)
 
 
 scrapers = {
