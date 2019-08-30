@@ -50,6 +50,11 @@ class APIScraperMethod(APIMethod):
             profile = f'{main_page} div.profile'
             profile_content = f'{profile} div.profile__contentBlock'
 
+            class SelectorTemplates:
+                """Common templates of selectors."""
+                hidden = '%s[style="display: none;"]'
+                visible = '%s:not([style="display: none;"])'
+
         class ScriptTemplates:
             """Common templates of scripts."""
             getattr = 'n => n.getAttribute("%s")'
@@ -68,6 +73,7 @@ class APIScraperMethod(APIMethod):
     s = Scripts
     ss = Scripts.Selectors
     sst = Scripts.ScriptTemplates
+    ssst = Scripts.Selectors.SelectorTemplates
 
     def __init__(self, api: APIScraper, name: str):
         super().__init__(api, name)
