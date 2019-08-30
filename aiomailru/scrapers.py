@@ -166,13 +166,14 @@ class GroupsGet(scraper):
                 ' div.groups-catalog__small-groups'
             )
             bar = f'{groups} div.groups-catalog__groups-more'
+            hidden_bar = scraper.ssst.hidden % bar
+            visible_bar = scraper.ssst.visible % bar
             catalog = f'{groups} div.groups__container'
             button = f'{bar} span.ui-button-gray'
             progress_button = f'{bar} span.progress'
             item = f'{catalog} div.groups__item'
 
         click = scraper.sst.click % Selectors.button
-        bar_style = scraper.sst.getattr % Selectors.bar
         button_class = scraper.sst.getattr % 'class'
         bar_css = scraper.sst.getattr % 'style'
         loaded = f'{scraper.sst.length % Selectors.item} > %d'
@@ -181,6 +182,9 @@ class GroupsGet(scraper):
     ss = Scripts.Selectors
 
     async def init(self, limit=10, offset=0, ext=0):
+        info = await self.api.users.getInfo(uids='')
+        if isinstance(info, dict):
+            return info
         self.page = await self.api.page(
             self.url,
             self.api.session.session_key,
@@ -191,76 +195,47 @@ class GroupsGet(scraper):
 
     @with_init
     async def call(self, *, limit=10, offset=0, ext=0):
-        return await self.scrape([], ext, limit, offset)
+        return await self.scrape(ext, limit, offset)
 
-    async def scrape(self, groups, ext, limit, offset):
+    async def scrape(self, ext, limit, offset):
         """Appends groups from the `page` to the `groups` list."""
-
-        catalog = await self.page.J(self.ss.catalog)
-        if catalog is None:
-            return []
-
-        elements = await catalog.JJ(self.ss.item)
-        start, stop = offset, min(offset + limit, len(elements))
-        limit -= stop - start
-
-        for i in range(start, stop):
-            item = await GroupItem.from_element(elements[i])
-            link = item['link'].lstrip('/')
-            resp = await self.api.session.public_request([link])
-            group = await self.api.users.getInfo(uids=resp['uid'])
-            if isinstance(group, dict):
-                return group
-            else:
-                group = group[0]
-            groups.append(group if ext else group['uid'])
-
-        if limit == 0:
-            return groups
-        elif await self.page.J(self.ss.bar) is None:
-            return groups
-        elif 'display: none;' in \
-                (await self.page.Jeval(self.ss.bar, self.s.bar_css) or ''):
-            return groups
-        else:
-            await self.page.evaluate(self.s.click)
-            await self.page.waitForFunction(self.s.loaded % len(groups))
-            return await self.scrape(groups, ext, limit, len(elements))
-
-    async def _scrape(self, ext, limit, offset):
         groups, cnt = [], 0
-        async for group in self.groups():
+        async for group in self.groups(ext):
             if cnt < offset:
                 continue
             else:
                 groups.append(group)
+            cnt += 1
 
             if len(groups) >= limit:
                 break
 
         return groups
 
-    async def groups(self):
-        bar_style, elements = '', []
+    async def groups(self, ext):
+        visible_bar, button, elements = True, True, []
 
-        while not bar_style:
+        while visible_bar:
             offset = len(elements)
             catalog = await self.page.J(self.ss.catalog)
             elements = await catalog.JJ(self.ss.item)
             for element in elements[offset:]:
-                yield await GroupItem.from_element(element)
+                item = await GroupItem.from_element(element)
+                link = item['link'].lstrip('/')
+                resp = await self.api.session.public_request([link])
+                group = await self.api.users.getInfo(uids=resp['uid'])
+                yield group[0] if ext else group[0]['uid']
 
-            await self.page.evaluate(self.s.click)
+            if await self.page.J(self.ss.button):
+                await self.page.evaluate(self.s.click)
+
             await asyncio.sleep(self.DELAY)
-
             progress_button = await self.page.J(self.ss.progress_button)
             while progress_button:
                 await asyncio.sleep(self.DELAY)
                 progress_button = await self.page.J(self.ss.progress_button)
 
-            bar = await self.page.J(self.ss.bar)
-            if bar:
-                bar_style = await self.page.Jeval()
+            visible_bar = await self.page.J(self.ss.visible_bar)
 
 
 class GroupsGetInfo(multiscraper):
