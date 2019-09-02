@@ -77,6 +77,14 @@ class Browser:
             viewport = ('width', 'height'), map(int, self.viewport.split(','))
             await page.setViewport(dict(zip(*viewport)))
             await page.setCookie(*cookies)
+            await page.setRequestInterception(True)
+
+            @page.on('request')
+            async def on_request(request):
+                if request.url.endswith('.png') or request.url.endswith('.jpg'):
+                    await request.abort()
+                else:
+                    await request.continue_()
 
             log.debug('go to %s ..' % url)
             await page.goto(url)
