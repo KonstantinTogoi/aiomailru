@@ -47,6 +47,7 @@ class APIScraperMethod(APIMethod):
                 ' div.l-content__center__inner'
             )
             main_page = f'{content} div.b-community__main-page'
+            closed_signage = f'{main_page} div.mf_cc'
             profile = f'{main_page} div.profile'
             profile_content = f'{profile} div.profile__contentBlock'
 
@@ -249,7 +250,7 @@ class GroupsGetInfo(multiscraper):
 
     class Scripts(multiscraper.s):
         class Selectors(multiscraper.ss):
-            closed_signage = f'{multiscraper.ss.main_page} div.mf_cc'
+            pass
 
     s = Scripts
     ss = Scripts.Selectors
