@@ -11,7 +11,7 @@ class Browser:
 
     endpoint = os.environ.get('PYPPETEER_BROWSER_ENDPOINT')
     viewport = os.environ.get('PYPPETEER_BROWSER_VIEWPORT', '800,600')
-    slow_mo = int(os.environ.get('PYPPETEER_BROWSER_SLOW_MO', '0'))
+    slow_mo = int(os.environ.get('PYPPETEER_BROWSER_SLOW_MO', '200'))
 
     def __init__(self, browser=None):
         self.browser = browser
