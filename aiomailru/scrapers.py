@@ -2,11 +2,17 @@
 
 import asyncio
 import logging
-from concurrent.futures import FIRST_COMPLETED
-from functools import lru_cache
-from uuid import uuid4
+from functools import wraps
 
-from .exceptions import APIError, APIScrapperError, CookieError
+from .exceptions import (
+    APIError,
+    APIScrapperError,
+    CookieError,
+    EmptyObjectsError,
+    EmptyGroupsError,
+    AccessDeniedError,
+    BlackListError,
+)
 from .api import API, APIMethod
 from .browser import Browser
 from .objects import Event, GroupItem
@@ -32,131 +38,248 @@ class APIScraper(API, Browser):
 class APIScraperMethod(APIMethod):
     """API scraper's method."""
 
+    class Scripts:
+        """Common scripts."""
+        class Selectors:
+            """Common selectors."""
+            content = (
+                ' html body'
+                ' div.l-content'
+                ' div.l-content__center'
+                ' div.l-content__center__inner'
+            )
+            main_page = f'{content} div.b-community__main-page'
+            closed_signage = f'{main_page} div.mf_cc'
+            profile = f'{main_page} div.profile'
+            profile_content = f'{profile} div.profile__contentBlock'
+
+            class SelectorTemplates:
+                """Common templates of selectors."""
+                hidden = '%s[style="display: none;"]'
+                visible = '%s:not([style="display: none;"])'
+
+        class ScriptTemplates:
+            """Common templates of scripts."""
+            getattr = 'n => n.getAttribute("%s")'
+            getclass = getattr % 'class'
+            getstyle = getattr % 'style'
+            selector = 'document.querySelector("%s")'
+            selector_all = 'document.querySelectorAll("%s")'
+            click = f'{selector}.click()'
+            computed_style = f'window.getComputedStyle({selector})'
+            display = f'{computed_style}["display"]'
+            visible = f'{display} != "none"'
+            length = f'{selector_all}.length'
+
+        scroll = 'window.scroll(0, document.body.scrollHeight)'
+
+    s = Scripts
+    ss = Scripts.Selectors
+    sst = Scripts.ScriptTemplates
+    ssst = Scripts.Selectors.SelectorTemplates
+
     def __init__(self, api: APIScraper, name: str):
         super().__init__(api, name)
+        self.page = None
 
     def __getattr__(self, name):
         name = f'{self.name}.{name}'
         return scrapers.get(name, APIMethod)(self.api, name)
 
-    async def __call__(self, *args, scrape=False, **params):
+    async def __call__(self, scrape=False, **params):
         call = self.call if scrape else super().__call__
-        return await call(*args, **params)
+        return await call(**params)
 
-    async def call(self, *args, **params):
-        raise NotImplementedError()
+    async def init(self, **params):
+        pass
+
+    async def call(self, **params):
+        await self.init(**params)
 
 
-class GroupsGet(APIScraperMethod):
+class APIScraperMultiMethod(APIScraperMethod):
+
+    multiarg = 'uids'
+    empty_objects_error = EmptyObjectsError
+    ignored_errors = (APIError, )
+
+    async def __call__(self, scrape=False, **params):
+        call = self.multicall if scrape else super().__call__()
+        return await call(**params)
+
+    async def multicall(self, **params):
+        args = params[self.multiarg].split(',')
+        result = []
+        for arg in args:
+            params.pop(self.multiarg)
+            params.update({self.multiarg: arg})
+
+            # when `self.api.session.pass_error` is False
+            try:
+                resp = await self.call(**params)
+            except self.ignored_errors:
+                resp = self.empty_objects_error().error
+
+            # when `self.api.session.pass_error` is True
+            if isinstance(resp, dict) and 'error_code' in resp:
+                pass
+            else:
+                result.append(resp[0])
+
+        if not result and self.empty_objects_error is not None:
+            if self.api.session.pass_error:
+                return self.empty_objects_error().error
+            else:
+                raise self.empty_objects_error
+        else:
+            return result
+
+
+scraper = APIScraperMethod
+multiscraper = APIScraperMultiMethod
+
+
+def with_init(coro):
+    @wraps(coro)
+    async def wrapper(self: scraper, **kwargs):
+        if not self.api.session.cookies:
+            raise CookieError('Cookie jar is empty. Set cookies.')
+        init_result = await self.init(**kwargs)
+        if isinstance(init_result, dict):
+            return init_result
+        else:
+            return await coro(self, **kwargs)
+
+    return wrapper
+
+
+class GroupsGet(scraper):
     """Returns a list of the communities to which the current user belongs."""
 
     url = 'https://my.mail.ru/my/communities'
 
-    class Scripts:
-        class Selectors:
-            content = (
-                'html body '
-                'div.l-content '
-                'div.l-content__center '
-                'div.l-content__center__inner '
-                'div.groups-catalog '
-                'div.groups-catalog__mine-groups '
-                'div.groups-catalog__small-groups '
+    class Scripts(scraper.s):
+        class Selectors(scraper.ss):
+            groups = (
+                f'{scraper.ss.content}'
+                ' div.groups-catalog'
+                ' div.groups-catalog__mine-groups'
+                ' div.groups-catalog__small-groups'
             )
-            bar = f'{content} div.groups-catalog__groups-more'
-            catalog = f'{content} div.groups__container'
+            bar = f'{groups} div.groups-catalog__groups-more'
+            hidden_bar = scraper.ssst.hidden % bar
+            visible_bar = scraper.ssst.visible % bar
+            catalog = f'{groups} div.groups__container'
             button = f'{bar} span.ui-button-gray'
+            progress_button = f'{bar} span.progress'
             item = f'{catalog} div.groups__item'
 
-        click = f'document.querySelector("{Selectors.button}").click()'
-        bar_css = 'n => n.getAttribute("style")'
-        loaded = f'document.querySelectorAll("{Selectors.item}").length > {{}}'
+        click = scraper.sst.click % Selectors.button
+        button_class = scraper.sst.getattr % 'class'
+        bar_css = scraper.sst.getattr % 'style'
+        loaded = f'{scraper.sst.length % Selectors.item} > %d'
 
     s = Scripts
     ss = Scripts.Selectors
 
-    async def call(self, limit=10, offset=0, ext=0):
-        cookies = self.api.session.cookies
-        session_key = self.api.session.session_key
-        if not cookies:
-            raise CookieError('Cookie jar is empty. Set cookies.')
+    async def init(self, limit=10, offset=0, ext=0):
+        info = await self.api.users.getInfo(uids='')
+        if isinstance(info, dict):
+            return info
+        url = self.url
+        log.debug(f'go to {url}')
+        self.page = await self.api.page(
+            url,
+            self.api.session.session_key,
+            self.api.session.cookies,
+        )
+        _ = await self.page.screenshot()
+        return True
 
-        page = await self.api.page(self.url, session_key, cookies, True)
-        return await self.scrape(page, [], ext, limit, offset)
+    @with_init
+    async def call(self, *, limit=10, offset=0, ext=0):
+        return await self.scrape(ext, limit, offset)
 
-    async def scrape(self, page, groups, ext, limit, offset):
+    async def scrape(self, ext, limit, offset):
         """Appends groups from the `page` to the `groups` list."""
+        log.debug(f'scrape subset: offset={offset}, limit={limit}')
 
-        _ = await page.screenshot()
-        catalog = await page.J(self.ss.catalog)
-        if catalog is None:
-            return []
+        groups, cnt = [], 0
+        async for group in self.groups(ext):
+            if cnt < offset:
+                continue
+            else:
+                groups.append(group)
+            cnt += 1
 
-        elements = await catalog.JJ(self.ss.item)
-        start, stop = offset, min(offset + limit, len(elements))
-        limit -= stop - start
+            if len(groups) >= limit:
+                break
 
-        for i in range(start, stop):
-            item = await GroupItem.from_element(elements[i])
-            link = item['link'].lstrip('/')
-            resp = await self.api.session.public_request([link])
-            group, *_ = await self.api.users.getInfo(uids=resp['uid'])
-            groups.append(group if ext else group['uid'])
+        return groups
 
-        if limit == 0:
-            return groups
-        elif await page.J(self.ss.bar) is None:
-            return groups
-        elif 'display: none;' in \
-                (await page.Jeval(self.ss.bar, self.s.bar_css) or ''):
-            return groups
-        else:
-            await page.evaluate(self.s.click)
-            await page.waitForFunction(self.s.loaded.format(len(groups)))
-            return await self.scrape(page, groups, ext, limit, len(elements))
+    async def groups(self, ext):
+        hidden_bar, bar, elements = None, True, []
+
+        while True:
+            offset = len(elements)
+            catalog = await self.page.J(self.ss.catalog)
+            elements = await catalog.JJ(self.ss.item)
+            for element in elements[offset:]:
+                item = await GroupItem.from_element(element)
+                link = item['link'].lstrip('/')
+                resp = await self.api.session.public_request([link])
+                group = await self.api.users.getInfo(uids=resp['uid'])
+                yield group[0] if ext else group[0]['uid']
+
+            if await self.page.J(self.ss.button):
+                await self.page.evaluate(self.s.click)
+
+            progress_button = True
+            while progress_button:
+                progress_button = await self.page.J(self.ss.progress_button)
+
+            # if current iteration should be the last
+            if hidden_bar is not None or bar is None:
+                break
+
+            # last iteration flag
+            bar = await self.page.J(self.ss.bar)  # if is absent
+            hidden_bar = await self.page.J(self.ss.hidden_bar)  # if is present
 
 
-class GroupsGetInfo(APIScraperMethod):
+class GroupsGetInfo(multiscraper):
     """Returns information about communities by their IDs."""
 
-    class Scripts:
-        class Selectors:
-            main_page = (
-                'html body '
-                'div.l-content '
-                'div.l-content__center '
-                'div.l-content__center__inner '
-                'div.b-community__main-page '
-            )
-            closed_signage = f'{main_page} div.mf_cc'
+    class Scripts(multiscraper.s):
+        class Selectors(multiscraper.ss):
+            pass
 
     s = Scripts
     ss = Scripts.Selectors
 
-    async def call(self, uids=''):
-        cookies = self.api.session.cookies
-        session_key = self.api.session.session_key
-        if not cookies:
-            raise CookieError('Cookie jar is empty. Set cookies.')
+    empty_objects_error = EmptyGroupsError
+    ignored_errors = (APIError, KeyError)  # KeyError when group_info is absent
 
-        info_list = await self.api.users.getInfo(uids=uids)
+    async def init(self, uids=''):
+        info = await self.api.users.getInfo(uids=uids)
+        if isinstance(info, dict):
+            return info
+        url = info[0]['link']
+        log.debug(f'go to {url}')
+        self.page = await self.api.page(
+            url,
+            self.api.session.session_key,
+            self.api.session.cookies,
+            True,
+        )
+        _ = await self.page.screenshot()
+        return True
 
-        if isinstance(info_list, dict):
-            if self.api.session.pass_error:
-                return info_list
-            else:
-                raise APIError(info_list)
+    @with_init
+    async def call(self, *, uids=''):
+        return await self.scrape(uids)
 
-        for info in info_list:
-            if 'group_info' in info:
-                url = info['link']
-                page = await self.api.page(url, session_key, cookies, True)
-                group_info = await self.scrape(page)
-                info['group_info'].update(group_info)
-
-        return info_list
-
-    async def scrape(self, page):
+    async def scrape(self, uids):
         """Returns additional information about a group.
 
         Object fields that are scraped here:
@@ -165,207 +288,180 @@ class GroupsGetInfo(APIScraperMethod):
 
         """
 
-        signage = await page.J(self.ss.closed_signage)
+        info = await self.api.users.getInfo(uids=uids)
+        signage = await self.page.J(self.ss.closed_signage)
         is_closed = True if signage is not None else False
-        group_info = {'is_closed': is_closed}
+        info[0]['group_info'].update({'is_closed': is_closed})
+        return info
 
-        return group_info
 
-
-class GroupsJoin(APIScraperMethod):
+class GroupsJoin(scraper):
     """With this method you can join the group."""
 
     retry_interval = 1
     num_attempts = 10
 
-    class Scripts:
-        class Selectors:
-            content = (
-                'html body '
-                'div.l-content '
-                'div.l-content__center '
-                'div.l-content__center__inner '
-                'div.b-community__main-page '
-                'div.profile div.profile__contentBlock '
-            )
+    class Scripts(scraper.s):
+        class Selectors(scraper.ss):
             links = (
-                f'{content} '
-                'div.profile__activeLinks '
-                'div.profile__activeLinks_community '
+                f'{scraper.ss.profile_content}'
+                ' div.profile__activeLinks'
+                ' div.profile__activeLinks_community'
             )
             join_span = f'{links} span.profile__activeLinks_button_enter'
             sent_span = f'{links} span.profile__activeLinks_link_modarated'
             approved_span = f'{links} span.profile__activeLinks_link_inGroup'
             auth_span = f'{links} div.l-popup_community-authorization'
 
-        selector = 'document.querySelector("{}")'
-        get_style = f'window.getComputedStyle({selector})'
-        visible = f'{get_style}["display"] != "none"'
-        join_span_visible = visible.format(Selectors.join_span)
-        sent_span_visible = visible.format(Selectors.sent_span)
-        approved_span_visible = visible.format(Selectors.approved_span)
+        join_span_visible = scraper.sst.visible % Selectors.join_span
+        sent_span_visible = scraper.sst.visible % Selectors.sent_span
+        approved_span_visible = scraper.sst.visible % Selectors.approved_span
 
-        join_click = f'document.querySelector("{Selectors.join_span}").click();'
+        join_click = f'{scraper.sst.click % Selectors.join_span}'
 
     s = Scripts
     ss = Scripts.Selectors
 
-    async def call(self, group_id=''):
-        cookies = self.api.session.cookies
-        session_key = self.api.session.session_key
-        if not cookies:
-            raise CookieError('Cookie jar is empty. Set cookies.')
-
+    async def init(self, group_id=''):
         info = await self.api.users.getInfo(uids=group_id)
         if isinstance(info, dict):
-            if self.api.session.pass_error:
-                return info
-            else:
-                raise APIError(info)
-        else:
-            link = info[0]['link']
+            return info
+        url = info[0]['link']
+        log.debug(f'go to {url}')
+        self.page = await self.api.page(
+            url,
+            self.api.session.session_key,
+            self.api.session.cookies,
+            True,
+        )
+        _ = await self.page.screenshot()
+        return True
 
-        page = await self.api.page(link, session_key, cookies, True)
-        await page.waitForSelector(self.ss.links)
-        return await self.scrape(page)
+    @with_init
+    async def call(self, *, group_id=''):
+        return await self.scrape()
 
-    async def scrape(self, page):
-        if await page.evaluate(self.s.join_span_visible):
-            return await self.join(page)
-        elif await page.evaluate(self.s.sent_span_visible):
+    async def scrape(self):
+        if await self.page.evaluate(self.s.join_span_visible):
+            return await self.join()
+        elif await self.page.evaluate(self.s.sent_span_visible):
             return 1
-        elif await page.evaluate(self.s.approved_span_visible):
+        elif await self.page.evaluate(self.s.approved_span_visible):
             return 1
         else:
             raise APIScrapperError('A join button not found.')
 
-    async def join(self, page):
+    async def join(self):
         for i in range(self.num_attempts):
-            await page.evaluate(self.s.join_click)
+            await self.page.evaluate(self.s.join_click)
             await asyncio.sleep(self.retry_interval)
 
-            if await page.evaluate(self.s.sent_span_visible):
+            if await self.page.evaluate(self.s.sent_span_visible):
                 return 1
-            elif await page.evaluate(self.s.approved_span_visible):
+            elif await self.page.evaluate(self.s.approved_span_visible):
                 return 1
 
         raise APIScrapperError('Failed to send join request.')
 
 
-class StreamGetByAuthor(APIScraperMethod):
+class StreamGetByAuthor(scraper):
     """Returns a list of events from user or community stream by their IDs."""
 
-    class Scripts:
-        class Selectors:
-            history = 'div[data-mru-fragment="home/history"]'
-            event = 'div.b-history-event[data-astat]'
+    class Scripts(scraper.s):
+        class Selectors(scraper.ss):
+            feed = f'{scraper.ss.main_page} div.b-community__main-page__feed'
+            stream = f'{feed} div.b-history[data-state]'
+            updating_stream = f'{stream}[data-state=""]'
+            loading_stream = f'{stream}[data-state="loading"]'
+            loaded_stream = f'{stream}[data-state="loaded"]'
+            ended_stream = f'{stream}[data-state="noevents"]'
+            content = f'{feed} div.content-wrapper'
+            event = f'{stream} div.b-history-event[data-astat]'
 
-        class XPaths:
-            history = (
-                '/html/body/div[@id="boosterCanvas"]'
-                '//div[@data-mru-fragment="home/history"]'
-            )
-            loaded = f'{history}[@data-state][@data-state!="loading"]'
-            loading = f'{history}[@data-state="loading"]'
-
-        scroll = 'window.scroll(0, document.body.scrollHeight)'
-        state = 'n => n.getAttribute("data-state")'
+        stream_state = scraper.sst.getattr % 'data-state'
 
     s = Scripts
     ss = Scripts.Selectors
-    sx = Scripts.XPaths
 
-    async def call(self, uid='', limit=10, skip=''):
-        uuid = skip if skip else uuid4().hex
-        return await self.scrape(uid, limit, skip, uuid)
-
-    @lru_cache(maxsize=None)
-    async def scrape(self, uid, limit, skip, uuid):
-        """Returns a list of events from user or community stream.
-
-        Args:
-            uid (str): User ID.
-            limit (int): Number of events to return.
-            skip (str): Latest event ID to skip.
-            uuid (str): Unique identifier. May be used to prevent
-                function from returning result from cache.
-
-        Returns:
-            events (list): Stream events.
-
-        """
-
-        cookies = self.api.session.cookies
-        session_key = self.api.session.session_key
-        if not cookies:
-            raise CookieError('Cookie jar is empty. Set cookies.')
-
+    async def init(self, uid='', limit=10, skip=''):
         info = await self.api.users.getInfo(uids=uid)
-
         if isinstance(info, dict):
+            return info
+        url = info[0]['link']
+        log.debug(f'go to {url}')
+        self.page = await self.api.page(
+            url,
+            self.api.session.session_key,
+            self.api.session.cookies,
+        )
+        _ = await self.page.screenshot()
+        return True
+
+    @with_init
+    async def call(self, *, uid='', limit=10, skip=''):
+        return await self.scrape(limit, skip)
+
+    async def scrape(self, limit, skip):
+        """Returns a list of events from user or community stream."""
+
+        log.debug(f'scrape subset: skip={skip}, limit={limit}')
+
+        try:
+            events = []
+            async for event in self.stream():
+                if skip:
+                    skip = skip if event['id'] != skip else False
+                else:
+                    events.append(event)
+
+                if len(events) >= limit:
+                    break
+        except (AccessDeniedError, BlackListError) as e:
             if self.api.session.pass_error:
-                return info
+                return e.error
             else:
-                raise APIError(info)
-        else:
-            link = info[0]['link']
-
-        page = await self.api.page(link, session_key, cookies)
-        events = []
-
-        async for event in self.stream(page):
-            if skip:
-                skip = skip if event['id'] != skip else False
-            else:
-                events.append(event)
-
-            if len(events) >= limit:
-                break
+                raise e
 
         return events
 
-    async def stream(self, page):
-        """Yields stream events from the beginning to the end.
+    async def stream(self):
+        """Yields stream events from the beginning to the end."""
 
-        Args:
-            page (pyppeteer.page.Page): Page with the stream.
+        ended_stream, elements = None, []
 
-        Yields:
-            event (Event): Stream event.
-
-        """
-
-        history = await page.J(self.ss.history)
-        history_ctx = history.executionContext
-        state, elements = None, []
-
-        while state != 'noevents':
+        while True:
             offset = len(elements)
-            elements = await history.JJ(self.ss.event)
+            content = await self.page.J(self.ss.content)
+
+            if content is None:
+                signage = await self.page.J(self.ss.closed_signage)
+                if signage:
+                    raise AccessDeniedError()
+                else:
+                    raise BlackListError()
+
+            elements = await content.JJ(self.ss.event)
             for element in elements[offset:]:
                 yield await Event.from_element(element)
 
-            await page.evaluate(self.s.scroll)
+            await self.page.evaluate(self.s.scroll)
 
-            tasks = [
-                page.waitForXPath(self.sx.loading),
-                page.waitForXPath(self.sx.loaded),
-            ]
+            loading_stream, updating_stream = True, True
+            while loading_stream or updating_stream:
+                stream = False
+                while not stream and content:
+                    stream = await self.page.waitForSelector(self.ss.stream)
+                    content = await self.page.J(self.ss.content)
 
-            _, pending = await asyncio.wait(tasks, return_when=FIRST_COMPLETED)
+                loading_stream = await self.page.J(self.ss.loading_stream)
+                updating_stream = await self.page.J(self.ss.updating_stream)
 
-            for task in tasks:
-                if not task.promise.done():
-                    task.promise.set_result(None)
-                    task._cleanup()
+            # if current iteration should be the last
+            if ended_stream is not None:
+                break
 
-            for future in pending:
-                future.cancel()
-
-            state = await history_ctx.evaluate(self.s.state, history)
-            if state == 'loading':
-                await page.waitForXPath(self.sx.loaded)
-                state = await history_ctx.evaluate(self.s.state, history)
+            # last iteration flag
+            ended_stream = await self.page.J(self.ss.ended_stream)
 
 
 scrapers = {

@@ -11,7 +11,7 @@ class Browser:
 
     endpoint = os.environ.get('PYPPETEER_BROWSER_ENDPOINT')
     viewport = os.environ.get('PYPPETEER_BROWSER_VIEWPORT', '800,600')
-    slow_mo = int(os.environ.get('PYPPETEER_BROWSER_SLOW_MO', '0'))
+    slow_mo = int(os.environ.get('PYPPETEER_BROWSER_SLOW_MO', '200'))
 
     def __init__(self, browser=None):
         self.browser = browser
@@ -77,8 +77,15 @@ class Browser:
             viewport = ('width', 'height'), map(int, self.viewport.split(','))
             await page.setViewport(dict(zip(*viewport)))
             await page.setCookie(*cookies)
+            await page.setRequestInterception(True)
 
-            log.debug('go to %s ..' % url)
+            @page.on('request')
+            async def on_request(request):
+                if request.url.endswith('.png') or request.url.endswith('.jpg'):
+                    await request.abort()
+                else:
+                    await request.continue_()
+
             await page.goto(url)
 
         return page
