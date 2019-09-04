@@ -74,7 +74,14 @@ class EmptyGroupsError(CustomAPIError):
 class AccessDeniedError(CustomAPIError):
     ERROR = {
         'error_code': 202,
-        'error_msg': 'Access to this object is denied: you are in blacklist.',
+        'error_msg': 'Access to this object is denied',
+    }
+
+
+class BlackListError(CustomAPIError):
+    ERROR = {
+        'error_code': 202,
+        'error_msg': 'Access to this object is denied: you are in blacklist',
     }
 
 

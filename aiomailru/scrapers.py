@@ -10,6 +10,8 @@ from .exceptions import (
     CookieError,
     EmptyObjectsError,
     EmptyGroupsError,
+    AccessDeniedError,
+    BlackListError,
 )
 from .api import API, APIMethod
 from .browser import Browser
@@ -403,15 +405,22 @@ class StreamGetByAuthor(scraper):
         """Returns a list of events from user or community stream."""
 
         log.debug(f'scrape subset: skip={skip}, limit={limit}')
-        events = []
-        async for event in self.stream():
-            if skip:
-                skip = skip if event['id'] != skip else False
-            else:
-                events.append(event)
 
-            if len(events) >= limit:
-                break
+        try:
+            events = []
+            async for event in self.stream():
+                if skip:
+                    skip = skip if event['id'] != skip else False
+                else:
+                    events.append(event)
+
+                if len(events) >= limit:
+                    break
+        except (AccessDeniedError, BlackListError) as e:
+            if self.api.session.pass_error:
+                return e.error
+            else:
+                raise e
 
         return events
 
@@ -423,6 +432,14 @@ class StreamGetByAuthor(scraper):
         while True:
             offset = len(elements)
             content = await self.page.J(self.ss.content)
+
+            if content is None:
+                signage = await self.page.J(self.ss.closed_signage)
+                if signage:
+                    raise AccessDeniedError()
+                else:
+                    raise BlackListError()
+
             elements = await content.JJ(self.ss.event)
             for element in elements[offset:]:
                 yield await Event.from_element(element)
@@ -432,8 +449,9 @@ class StreamGetByAuthor(scraper):
             loading_stream, updating_stream = True, True
             while loading_stream or updating_stream:
                 stream = False
-                while not stream:
+                while not stream and content:
                     stream = await self.page.waitForSelector(self.ss.stream)
+                    content = await self.page.J(self.ss.content)
 
                 loading_stream = await self.page.J(self.ss.loading_stream)
                 updating_stream = await self.page.J(self.ss.updating_stream)
