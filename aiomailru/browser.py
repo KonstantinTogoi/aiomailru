@@ -86,7 +86,6 @@ class Browser:
                 else:
                     await request.continue_()
 
-            log.debug('go to %s ..' % url)
             await page.goto(url)
 
         return page
