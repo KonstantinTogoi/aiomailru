@@ -153,8 +153,6 @@ def with_init(coro):
 class GroupsGet(scraper):
     """Returns a list of the communities to which the current user belongs."""
 
-    DELAY = 0.3  # delay before checking loaded groups
-
     url = 'https://my.mail.ru/my/communities'
 
     class Scripts(scraper.s):
@@ -185,8 +183,10 @@ class GroupsGet(scraper):
         info = await self.api.users.getInfo(uids='')
         if isinstance(info, dict):
             return info
+        url = self.url
+        log.debug(f'go to {url}')
         self.page = await self.api.page(
-            self.url,
+            url,
             self.api.session.session_key,
             self.api.session.cookies,
         )
@@ -199,6 +199,8 @@ class GroupsGet(scraper):
 
     async def scrape(self, ext, limit, offset):
         """Appends groups from the `page` to the `groups` list."""
+        log.debug(f'scrape subset: offset={offset}, limit={limit}')
+
         groups, cnt = [], 0
         async for group in self.groups(ext):
             if cnt < offset:
@@ -213,9 +215,9 @@ class GroupsGet(scraper):
         return groups
 
     async def groups(self, ext):
-        visible_bar, elements = True, []
+        hidden_bar, bar, elements = None, True, []
 
-        while visible_bar:
+        while True:
             offset = len(elements)
             catalog = await self.page.J(self.ss.catalog)
             elements = await catalog.JJ(self.ss.item)
@@ -231,10 +233,15 @@ class GroupsGet(scraper):
 
             progress_button = True
             while progress_button:
-                await asyncio.sleep(self.DELAY)
                 progress_button = await self.page.J(self.ss.progress_button)
 
-            visible_bar = await self.page.J(self.ss.visible_bar)
+            # if current iteration should be the last
+            if hidden_bar is not None or bar is None:
+                break
+
+            # last iteration flag
+            bar = await self.page.J(self.ss.bar)  # if is absent
+            hidden_bar = await self.page.J(self.ss.hidden_bar)  # if is present
 
 
 class GroupsGetInfo(multiscraper):
@@ -254,8 +261,10 @@ class GroupsGetInfo(multiscraper):
         info = await self.api.users.getInfo(uids=uids)
         if isinstance(info, dict):
             return info
+        url = info[0]['link']
+        log.debug(f'go to {url}')
         self.page = await self.api.page(
-            info[0]['link'],
+            url,
             self.api.session.session_key,
             self.api.session.cookies,
             True,
@@ -314,8 +323,10 @@ class GroupsJoin(scraper):
         info = await self.api.users.getInfo(uids=group_id)
         if isinstance(info, dict):
             return info
+        url = info[0]['link']
+        log.debug(f'go to {url}')
         self.page = await self.api.page(
-            info[0]['link'],
+            url,
             self.api.session.session_key,
             self.api.session.cookies,
             True,
@@ -353,8 +364,6 @@ class GroupsJoin(scraper):
 class StreamGetByAuthor(scraper):
     """Returns a list of events from user or community stream by their IDs."""
 
-    DELAY = 0.05  # delay before checking history's state
-
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
             feed = f'{scraper.ss.main_page} div.b-community__main-page__feed'
@@ -375,8 +384,10 @@ class StreamGetByAuthor(scraper):
         info = await self.api.users.getInfo(uids=uid)
         if isinstance(info, dict):
             return info
+        url = info[0]['link']
+        log.debug(f'go to {url}')
         self.page = await self.api.page(
-            info[0]['link'],
+            url,
             self.api.session.session_key,
             self.api.session.cookies,
         )
@@ -390,6 +401,7 @@ class StreamGetByAuthor(scraper):
     async def scrape(self, limit, skip):
         """Returns a list of events from user or community stream."""
 
+        log.debug(f'scrape subset: skip={skip}, limit={limit}')
         events = []
         async for event in self.stream():
             if skip:
@@ -405,9 +417,9 @@ class StreamGetByAuthor(scraper):
     async def stream(self):
         """Yields stream events from the beginning to the end."""
 
-        stream, elements = True, []
+        ended_stream, elements = None, []
 
-        while stream:
+        while True:
             offset = len(elements)
             content = await self.page.J(self.ss.content)
             elements = await content.JJ(self.ss.event)
@@ -420,15 +432,17 @@ class StreamGetByAuthor(scraper):
             while loading_stream or updating_stream:
                 stream = False
                 while not stream:
-                    await asyncio.sleep(self.DELAY)
                     stream = await self.page.waitForSelector(self.ss.stream)
 
-                await asyncio.sleep(self.DELAY)
                 loading_stream = await self.page.J(self.ss.loading_stream)
                 updating_stream = await self.page.J(self.ss.updating_stream)
 
-            stream = await self.page.J(self.ss.stream)
-            print('"loaded" is', stream)
+            # if current iteration should be the last
+            if ended_stream is not None:
+                break
+
+            # last iteration flag
+            ended_stream = await self.page.J(self.ss.ended_stream)
 
 
 scrapers = {
