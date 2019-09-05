@@ -20,7 +20,8 @@ setup(
     license='BSD',
     packages=['aiomailru', 'aiomailru.objects'],
     install_requires='aiohttp>=3.0.0',
-    extra_require={
+    extras_require={
+        'logging': ['PyYAML'],
         'scrapers': ['pyppeteer<=0.0.25'],
     },
     keywords=['mail.ru api asyncio'],
