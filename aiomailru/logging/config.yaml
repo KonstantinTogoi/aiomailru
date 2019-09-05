@@ -1,0 +1,23 @@
+logging:
+  version: 1
+  disable_existing_loggers: False
+  formatters:
+    console:
+      format: >-
+        [%(levelname).1s %(asctime).19s]
+        %(name)s:%(lineno)d %(message)s
+  handlers:
+    console:
+      class: logging.StreamHandler
+      level: DEBUG
+      formatter: console
+      stream: ext://sys.stdout
+  loggers:
+    aiomailru:
+      level: DEBUG
+      handlers: [console]
+      propagate: False
+    asyncio:
+      level: ERROR
+      handlers: [console]
+      propagate: False
