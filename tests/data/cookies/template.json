@@ -1,0 +1,72 @@
+{
+  "<account_name>": {
+    "<application_id>": [
+      {
+        "name": "GarageID",
+        "value": "",
+        "domain": ".auth.mail.ru",
+        "path": "/",
+        "expires": 1.0,
+        "size": 99,
+        "httpOnly": true,
+        "secure": true,
+        "session": false
+      },
+      {
+        "name": "Priority",
+        "value": "HIGH",
+        "domain": ".auth.mail.ru",
+        "path": "/cgi-bin",
+        "expires": null,
+        "size": 99,
+        "httpOnly": false,
+        "secure": false,
+        "session": true
+      },
+      {
+        "name": "ssdc",
+        "value": "",
+        "domain": ".auth.mail.ru",
+        "path": "/",
+        "expires": 0.0,
+        "size": 99,
+        "httpOnly": true,
+        "secure": true,
+        "session": false
+      },
+      {
+        "name": "ssdc_info",
+        "value": "",
+        "domain": ".auth.mail.ru",
+        "path": "/",
+        "expires": 0.0,
+        "size": 99,
+        "httpOnly": true,
+        "secure": false,
+        "session": false
+      },
+      {
+        "name": "Mpop",
+        "value": "",
+        "domain": ".mail.ru",
+        "path": "/",
+        "expires": 0.0,
+        "size": 99,
+        "httpOnly": false,
+        "secure": false,
+        "session": false
+      },
+      {
+        "name": "t",
+        "value": "",
+        "domain": ".mail.ru",
+        "path": "/",
+        "expires": 0.0,
+        "size": 99,
+        "httpOnly": false,
+        "secure": false,
+        "session": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "<admin_account_name>": {
+    "<application_id>": {
+      "app_id": 123456,
+      "secret_key": "<application_secret_key>"
+    }
+  }
+}
