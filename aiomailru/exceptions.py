@@ -29,6 +29,7 @@ class CustomOAuthError(Error):
 
 
 class InvalidGrantError(CustomOAuthError):
+    """Invalid user credentials."""
 
     ERROR = {
         'error': 'invalid_grant',
@@ -42,6 +43,15 @@ class InvalidClientError(CustomOAuthError):
     ERROR = {
         'error': 'invalid_client',
         'error_description': 'invalid client id',
+    }
+
+
+class InvalidUserError(CustomOAuthError):
+    """Invalid user (blocked)."""
+
+    ERROR = {
+        'error': 'invalid_user',
+        'error_description': 'user is blocked',
     }
 
 

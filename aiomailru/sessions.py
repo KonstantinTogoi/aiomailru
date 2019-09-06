@@ -9,6 +9,7 @@ from .exceptions import (
     OAuthError,
     InvalidGrantError,
     InvalidClientError,
+    InvalidUserError,
     APIError,
 )
 from .parser import AuthPageParser
@@ -257,13 +258,17 @@ class ImplicitSession(TokenSession):
             log.debug(f'getting authorization dialog {self.OAUTH_URL}')
             url, html = await self._get_auth_dialog()
 
-            if url.path == '/oauth/authorize':
+            if 'Не указано приложение' in html:
+                raise InvalidClientError()
+            elif url.path == '/oauth/authorize':
                 log.debug(f'authorizing at {url}')
                 url, html = await self._post_auth_dialog(html)
 
             if url.path == '/oauth/success.html':
                 await self._get_access_token()
                 return self
+            elif url.path == '/recovery':
+                raise InvalidUserError()
             elif url.query.get('fail') == '1':
                 log.error('Invalid login or password.')
                 raise InvalidGrantError()
@@ -282,9 +287,6 @@ class ImplicitSession(TokenSession):
                 raise OAuthError(self.GET_AUTH_DIALOG_ERROR_MSG)
             else:
                 url, html = resp.url, await resp.text()
-
-        if 'Не указано приложение' in html:
-            raise InvalidClientError()
 
         return url, html
 
