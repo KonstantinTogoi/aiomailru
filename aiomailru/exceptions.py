@@ -12,18 +12,32 @@ class Error(Exception):
         super().__init__(arg)
 
 
-class AuthError(Error):
+class OAuthError(Error):
+    """OAuth error."""
 
-    ERROR = {
-        'error': 'invalid_user_credentials',
-        'error_description': 'invalid login or password',
-    }
+    def __init__(self, error: str):
+        super().__init__({'error': 'oauth_error', 'error_description': error})
+
+
+class CustomOAuthError(Error):
+    """Custom errors that raised when authorization failed."""
+
+    ERROR = {'error': '', 'error_description': ''}
 
     def __init__(self):
         super().__init__(self.ERROR)
 
 
-class MyMailAuthError(Error):
+class InvalidGrantError(CustomOAuthError):
+    """Invalid user credentials."""
+
+    ERROR = {
+        'error': 'invalid_grant',
+        'error_description': 'invalid login or password',
+    }
+
+
+class InvalidClientError(CustomOAuthError):
     """Invalid client id."""
 
     ERROR = {
@@ -31,8 +45,14 @@ class MyMailAuthError(Error):
         'error_description': 'invalid client id',
     }
 
-    def __init__(self):
-        super().__init__(self.ERROR)
+
+class InvalidUserError(CustomOAuthError):
+    """Invalid user (blocked)."""
+
+    ERROR = {
+        'error': 'invalid_user',
+        'error_description': 'user is blocked',
+    }
 
 
 class APIError(Error):

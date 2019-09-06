@@ -10,7 +10,7 @@ with open(readme_path) as readme_file:
 
 setup(
     name='aiomailru',
-    version='0.0.16',
+    version='0.0.17',
     author='Konstantin Togoi',
     author_email='konstantin.togoi@protonmail.com',
     url='https://github.com/KonstantinTogoi/aiomailru',
@@ -20,7 +20,8 @@ setup(
     license='BSD',
     packages=['aiomailru', 'aiomailru.objects'],
     install_requires='aiohttp>=3.0.0',
-    extra_require={
+    extras_require={
+        'logging': ['PyYAML'],
         'scrapers': ['pyppeteer<=0.0.25'],
     },
     keywords=['mail.ru api asyncio'],

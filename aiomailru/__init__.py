@@ -3,8 +3,8 @@ from . import api, exceptions, objects, parser, sessions, utils
 from .utils import parseaddr
 from .exceptions import (
     Error,
-    AuthError,
-    MyMailAuthError,
+    InvalidGrantError,
+    InvalidClientError,
     APIError,
     APIScrapperError,
     CookieError,
