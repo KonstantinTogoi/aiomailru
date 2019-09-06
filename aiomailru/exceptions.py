@@ -12,6 +12,13 @@ class Error(Exception):
         super().__init__(arg)
 
 
+class OAuthError(Error):
+    """OAuth error."""
+
+    def __init__(self, error: str):
+        super().__init__({'error': 'oauth_error', 'error_description': error})
+
+
 class AuthError(Error):
 
     ERROR = {

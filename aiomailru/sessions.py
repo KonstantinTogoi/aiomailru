@@ -4,7 +4,13 @@ import hashlib
 import logging
 from yarl import URL
 
-from .exceptions import Error, AuthError, MyMailAuthError, APIError
+from .exceptions import (
+    Error,
+    OAuthError,
+    AuthError,
+    MyMailAuthError,
+    APIError,
+)
 from .parser import AuthPageParser
 from .utils import full_scope, parseaddr, SignatureCircuit, Cookie
 
@@ -213,6 +219,9 @@ class ImplicitSession(TokenSession):
     OAUTH_URL = 'https://connect.mail.ru/oauth/authorize'
     REDIRECT_URI = 'http%3A%2F%2Fconnect.mail.ru%2Foauth%2Fsuccess.html'
 
+    AUTHORIZE_NUM_ATTEMPTS = 1
+    AUTHORIZE_RETRY_INTERVAL = 3
+
     GET_AUTH_DIALOG_ERROR_MSG = 'Failed to open authorization dialog.'
     POST_AUTH_DIALOG_ERROR_MSG = 'Form submission failed.'
     GET_ACCESS_TOKEN_ERROR_MSG = 'Failed to receive access token.'
@@ -238,7 +247,12 @@ class ImplicitSession(TokenSession):
             'scope': self.scope,
         }
 
-    async def authorize(self, num_attempts=1, retry_interval=1):
+    async def authorize(self, num_attempts=None, retry_interval=None):
+        """OAuth Implicit flow."""
+
+        num_attempts = num_attempts or self.AUTHORIZE_NUM_ATTEMPTS
+        retry_interval = retry_interval or self.AUTHORIZE_RETRY_INTERVAL
+
         for attempt_num in range(num_attempts):
             log.debug(f'getting authorization dialog {self.OAUTH_URL}')
             url, html = await self._get_auth_dialog()
@@ -256,8 +270,8 @@ class ImplicitSession(TokenSession):
 
             await asyncio.sleep(retry_interval)
         else:
-            log.error('Authorization failed.')
-            raise Error('Authorization failed.')
+            log.error(f'{num_attempts} login attempts exceeded.')
+            raise OAuthError(f'{num_attempts} login attempts exceeded.')
 
     async def _get_auth_dialog(self):
         """Returns url and html code of authorization dialog."""
@@ -265,7 +279,7 @@ class ImplicitSession(TokenSession):
         async with self.session.get(self.OAUTH_URL, params=self.params) as resp:
             if resp.status != 200:
                 log.error(self.GET_AUTH_DIALOG_ERROR_MSG)
-                raise Error(self.GET_AUTH_DIALOG_ERROR_MSG)
+                raise OAuthError(self.GET_AUTH_DIALOG_ERROR_MSG)
             else:
                 url, html = resp.url, await resp.text()
 
@@ -300,7 +314,7 @@ class ImplicitSession(TokenSession):
         async with self.session.post(form_url, data=form_data) as resp:
             if resp.status != 200:
                 log.error(self.POST_AUTH_DIALOG_ERROR_MSG)
-                raise Error(self.POST_AUTH_DIALOG_ERROR_MSG)
+                raise OAuthError(self.POST_AUTH_DIALOG_ERROR_MSG)
             else:
                 url, html = resp.url, await resp.text()
 
@@ -310,7 +324,7 @@ class ImplicitSession(TokenSession):
         async with self.session.get(self.OAUTH_URL, params=self.params) as resp:
             if resp.status != 200:
                 log.error(self.GET_ACCESS_TOKEN_ERROR_MSG)
-                raise Error(self.GET_ACCESS_TOKEN_ERROR_MSG)
+                raise OAuthError(self.GET_ACCESS_TOKEN_ERROR_MSG)
             else:
                 location = URL(resp.history[-1].headers['Location'])
                 url = URL(f'?{location.fragment}')
@@ -322,7 +336,7 @@ class ImplicitSession(TokenSession):
             self.token_type = url.query['token_type']
             self.uid = url.query['x_mailru_vid']
         except KeyError as e:
-            raise Error(f'"{e.args[0]}" is missing in the auth response')
+            raise OAuthError(f'"{e.args[0]}" is missing in the auth response')
 
 
 class ImplicitClientSession(ImplicitSession):
