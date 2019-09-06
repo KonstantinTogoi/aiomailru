@@ -268,9 +268,10 @@ class ImplicitSession(TokenSession):
                 await self._get_access_token()
                 return self
             elif url.path == '/recovery':
+                log.error(f'User {self.email} is blocked.')
                 raise InvalidUserError()
             elif url.query.get('fail') == '1':
-                log.error('Invalid login or password.')
+                log.error(f'Invalid e-mail {self.email} or password.')
                 raise InvalidGrantError()
 
             await asyncio.sleep(retry_interval)

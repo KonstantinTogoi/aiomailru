@@ -10,7 +10,7 @@ with open(readme_path) as readme_file:
 
 setup(
     name='aiomailru',
-    version='0.0.17',
+    version='0.0.18',
     author='Konstantin Togoi',
     author_email='konstantin.togoi@protonmail.com',
     url='https://github.com/KonstantinTogoi/aiomailru',
@@ -18,7 +18,7 @@ setup(
     long_description=readme,
     long_description_content_type='text/markdown',
     license='BSD',
-    packages=['aiomailru', 'aiomailru.objects'],
+    packages=['aiomailru', 'aiomailru.logging', 'aiomailru.objects'],
     install_requires='aiohttp>=3.0.0',
     extras_require={
         'logging': ['PyYAML'],

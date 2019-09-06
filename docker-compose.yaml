@@ -8,6 +8,8 @@ services:
             - PREBOOT_CHROME=true
             - KEEP_ALIVE=true
             - CHROME_REFRESH_TIME=86400000
+            - MAX_CONCURRENT_SESSIONS=20
+            - MAX_QUEUE_LENGTH=200
         hostname: chrome
         ports:
             - 3000:3000
