@@ -7,8 +7,8 @@ from yarl import URL
 from .exceptions import (
     Error,
     OAuthError,
-    AuthError,
-    MyMailAuthError,
+    InvalidGrantError,
+    InvalidClientError,
     APIError,
 )
 from .parser import AuthPageParser
@@ -266,7 +266,7 @@ class ImplicitSession(TokenSession):
                 return self
             elif url.query.get('fail') == '1':
                 log.error('Invalid login or password.')
-                raise AuthError()
+                raise InvalidGrantError()
 
             await asyncio.sleep(retry_interval)
         else:
@@ -284,7 +284,7 @@ class ImplicitSession(TokenSession):
                 url, html = resp.url, await resp.text()
 
         if 'Не указано приложение' in html:
-            raise MyMailAuthError()
+            raise InvalidClientError()
 
         return url, html
 
