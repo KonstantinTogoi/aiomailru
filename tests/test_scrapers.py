@@ -26,64 +26,60 @@ class TestScrapers:
     check_groups_join = dummy_check
     check_stream_get_by_author = dummy_check
 
-    @staticmethod
-    async def test_groups_get(acc_name, app_id):
+    async def test_groups_get(self, acc_name, app_id):
         print('test "groups.get"')
         session = await login(acc_name, acc_name, app_id)
         api = APIScraper(session)
         resp = await api.groups.get(
-            **dict(TestScrapers.params_groups_get), scrape=True
+            **dict(self.params_groups_get), scrape=True
         )
-        TestScrapers.check_groups_get(resp)
+        self.check_groups_get(resp)
         await session.close()
         print('"groups.get" tested successfully')
 
-    @staticmethod
-    async def test_groups_get_info(acc_name, app_id):
+    async def test_groups_get_info(self, acc_name, app_id):
         print('test "groups.getInfo"')
         session = await login(acc_name, acc_name, app_id)
         app = APIScraper(session)
         resp = await app.groups.getInfo(
-            **dict(TestScrapers.params_groups_get_info), scrape=True
+            **dict(self.params_groups_get_info), scrape=True
         )
         TestScrapers.check_groups_get_info(resp)
         await session.close()
         print('"groups.getInfo" tested successfully')
 
-    @staticmethod
-    async def test_groups_join(acc_name, app_id):
+    async def test_groups_join(self, acc_name, app_id):
         print('test "groups.join"')
         session = await login(acc_name, acc_name, app_id)
         api = APIScraper(session)
         resp = await api.groups.join(
-            **dict(TestScrapers.params_groups_join), scrape=True
+            **dict(self.params_groups_join), scrape=True
         )
-        TestScrapers.check_groups_join(resp)
+        self.check_groups_join(resp)
         await session.close()
         print('"groups.join" tested successfully')
 
-    @staticmethod
-    async def test_stream_get_by_author(acc_name, app_id):
+    async def test_stream_get_by_author(self, acc_name, app_id):
         print('test "stream.getByAuthor"')
         session = await login(acc_name, acc_name, app_id)
         api = APIScraper(session)
         resp = await api.stream.getByAuthor(
-            **dict(TestScrapers.params_stream_get_by_author), scrape=True
+            **dict(self.params_stream_get_by_author), scrape=True
         )
-        TestScrapers.check_stream_get_by_author(resp)
+        self.check_stream_get_by_author(resp)
         await session.close()
         print('"stream.getByAuthor" tested successfully')
 
-    @staticmethod
     async def test(
+            self,
             acc_name=test_acc_name,
             app_id=test_app_id
             ):
-        await TestScrapers.test_groups_get(
+        await self.test_groups_get(
             acc_name=acc_name, app_id=app_id)
-        await TestScrapers.test_groups_get_info(
+        await self.test_groups_get_info(
             acc_name=acc_name, app_id=app_id)
-        await TestScrapers.test_groups_join(
+        await self.test_groups_join(
             acc_name=acc_name, app_id=app_id)
-        await TestScrapers.test_stream_get_by_author(
+        await self.test_stream_get_by_author(
             acc_name=acc_name, app_id=app_id)
