@@ -19,6 +19,8 @@ setup(
     long_description_content_type='text/markdown',
     license='BSD',
     packages=['aiomailru', 'aiomailru.logging', 'aiomailru.objects'],
+    package_data={'logging': ['config.yaml']},
+    include_package_data=True,
     install_requires='aiohttp>=3.0.0',
     extras_require={
         'logging': ['PyYAML'],
