@@ -22,7 +22,7 @@ class OAuthError(Error):
 class AuthError(Error):
 
     ERROR = {
-        'error': 'invalid_user_credentials',
+        'error': 'invalid_grant',
         'error_description': 'invalid login or password',
     }
 
