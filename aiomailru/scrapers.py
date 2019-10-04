@@ -223,7 +223,10 @@ class GroupsGet(scraper):
         while True:
             offset = len(elements)
             catalog = await self.page.J(self.ss.catalog)
-            elements = await catalog.JJ(self.ss.item)
+            if catalog:
+                elements = await catalog.JJ(self.ss.item)
+            else:
+                break
             for element in elements[offset:]:
                 item = await GroupItem.from_element(element)
                 link = item['link'].lstrip('/')
