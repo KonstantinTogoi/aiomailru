@@ -10,7 +10,7 @@ with open(readme_path) as readme_file:
 
 setup(
     name='aiomailru',
-    version='0.0.20',
+    version='0.0.21',
     author='Konstantin Togoi',
     author_email='konstantin.togoi@protonmail.com',
     url='https://github.com/KonstantinTogoi/aiomailru',
