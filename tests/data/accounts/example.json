@@ -1,7 +1,6 @@
 {
   "<user_account_name>": {
     "email": "<account_email>",
-    "passwd": "<account_password>",
-    "scope": "<permissions_list>"
+    "passwd": "<account_password>"
   }
 }
