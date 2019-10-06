@@ -1,9 +1,16 @@
 import os
 
-from test_sessions import login
-from aiomailru.scrapers import APIScraper
+import pytest
+
+skip_scrapers = False
+try:
+    from aiomailru.scrapers import APIScraper
+    from .manager import login
+except ModuleNotFoundError:
+    skip_scrapers = True
 
 
+@pytest.mark.skipif(skip_scrapers, reason='pyppeteer not found')
 class TestScrapers:
     test_acc_name = os.environ.get('AIOMAILRU_TEST_ACC_NAME', '<account_name>')
     test_app_id = os.environ.get('AIOMAILRU_TEST_APP_NAME', '<application_id>')

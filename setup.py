@@ -22,6 +22,7 @@ setup(
     package_data={'aiomailru.logging': ['config.yaml']},
     include_package_data=True,
     install_requires='aiohttp>=3.0.0',
+    tests_require=['pytest', 'pytest-asyncio', 'pytest-localserver'],
     extras_require={
         'logging': ['PyYAML'],
         'scrapers': ['pyppeteer<=0.0.25'],
