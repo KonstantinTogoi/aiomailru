@@ -1,7 +1,8 @@
-import aiohttp
 import asyncio
 import hashlib
 import logging
+
+import aiohttp
 from yarl import URL
 
 from .exceptions import (
@@ -12,7 +13,7 @@ from .exceptions import (
     InvalidUserError,
     APIError,
 )
-from .parser import AuthPageParser
+from .parsers import AuthPageParser
 from .utils import full_scope, parseaddr, SignatureCircuit, Cookie
 
 
