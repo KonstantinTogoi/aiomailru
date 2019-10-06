@@ -1,18 +1,20 @@
-from collections import defaultdict
 import html.parser
+from collections import defaultdict
 
 
-class AuthPageParser(html.parser.HTMLParser):
-    """Authorization page parser."""
-
-    def __init__(self):
-        super().__init__()
-        self.inputs = {}
-        self.url = ''
+class FormParser(html.parser.HTMLParser):
+    """HTML form parser."""
 
     @property
     def form(self):
         return self.url, self.inputs
+
+    __slots__ = ('url', 'inputs')
+
+    def __init__(self):
+        super().__init__()
+        self.url = ''
+        self.inputs = {}
 
     def handle_starttag(self, tag, attrs):
         attrs = defaultdict(str, attrs)
@@ -23,3 +25,11 @@ class AuthPageParser(html.parser.HTMLParser):
         elif tag == 'form':
             if attrs['method'] == 'post':
                 self.url = attrs['action']
+
+
+class AuthPageParser(FormParser):
+    """Authorization page parser."""
+
+
+class AccessPageParser(FormParser):
+    """Access page parser."""
