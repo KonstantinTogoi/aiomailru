@@ -1,0 +1,219 @@
+<!-- GET___prerelease = '' -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ru" lang="ru">
+<head>
+<title>Mail.Ru &mdash; Запрос доступа</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <link rel="stylesheet" href="https://my1.imgsmail.ru/mail/ru/css/new/connect/dialogs_rev0074e7793e.css"/>
+<!--[if IE 7]>
+    <style type="text/css">
+    .login-form .text {
+        height: 16px;
+    }
+    .login-form__name .text {
+        width: 156px;
+    }
+    .login-form__password .text {
+        width: 238px;
+    }
+    .login-form__select {
+        margin-top: 1px;
+        margin-right: 6px;
+    }
+    .login-form__select select {
+        border: 0;
+        display: block;
+    }
+    .login-form__footer .ui-button-main {
+        width: 140px;
+    }
+    .login-form__right {
+        width: 90px;
+    }
+    </style>
+<![endif]-->
+<!--[if IE 8]>
+<style type="text/css">
+.login-form__select select {
+    height: 26px;
+    line-height: 26px;
+    padding: 4px;
+}
+</style>
+<![endif]-->
+</head>
+
+<body>
+<div id="wrp" class="auth-dialog">
+    <div class="header">
+        <span class="header__logo">Мой Мир@Mail.Ru</span>
+        <div class="header__account">
+            <span class="header__account-name">User name</span> &bull;
+            <a href="#change-account" id="change-account-link">Выйти</a>
+        </div>
+    </div>
+
+    <div class="content">
+        <form id="login" method="post" action="https://connect.mail.ru/oauth/authorize">
+            <input type="hidden" name="sig" value="abcde"/>
+            <input type="hidden" name="client_id" value="123456"/>
+            <input type="hidden" name="redirect_uri" value="http://connect.mail.ru/oauth/success.html"/>
+            <input type="hidden" name="response_type" value="token"/>
+            <input type="hidden" name="state" value=""/>
+            <input type="hidden" name="login" value="1"/>
+            <input type="hidden" name="needed_permissions" value="576"/>
+
+            <div id="content">
+                <h1>Необходим доступ к вашим данным</h1>
+                <div id="permission-list" class="permissions">
+                    <p><b class="site-name">App name</b> просит вас разрешить следующие действия:</p>
+                    <ul class="permissions-list">
+                        <li>Получать информацию о вашей анкете, списке друзей, фотографиях и музыке</li>
+                        <li><i class="ico icoFoto"></i>Создавать альбомы и размещать там изображения</li>
+                        <li><i class="ico icoMessages"></i>Отправлять личные сообщения другим пользователям</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="highlight tar">
+                <button type="submit" class="ui-button-main" id="accept" name="agree" value="1">Я согласен, разрешить</button>
+                <a href="http://connect.mail.ru/oauth/success.html?error=access_denied" tabindex="5" class="ui-button-link">Не согласен, закрыть</a
+            </div>
+        </form>
+    </div><!--content-->
+</div><!--popup-->
+
+<script type="text/javascript">
+(function(width, height) {
+
+    function resizeWindow() {
+        var tmp = document.documentElement.style.overflowX;
+        document.documentElement.style.overflowX = "scroll";
+            if (window.outerWidth) {
+                window.resizeTo(
+                        width + (window.outerWidth - window.innerWidth),
+                        height + (window.outerHeight - window.innerHeight)
+                );
+            } else {
+                window.resizeTo(500, 500);
+                window.resizeTo(
+                        width + (500 - document.body.offsetWidth),
+                        height + (500 - document.body.offsetHeight)
+                );
+            }
+        document.documentElement.style.overflowX = tmp;
+    }
+
+    resizeWindow();
+
+    setTimeout(resizeWindow, 200);
+})(445, document.body.offsetHeight);
+
+var domainSelect = document.getElementById('domain-select'),
+        domainSelectText = document.getElementById('domain-select-text'),
+        regLink = document.getElementById('reg_link'),
+        shareForm = document.getElementById('share-form'),
+        shareUrl = document.getElementById('share_url');
+
+if (domainSelect) {
+    domainSelect.onchange = function () {
+        domainSelectText.innerText = '@' + domainSelect.value;
+    };
+    domainSelect.onkeyup = function () {
+        domainSelectText.innerText = '@' + domainSelect.value;
+    };
+}
+
+if (regLink) {
+    regLink.onclick = function (e) {
+        document.domain = 'mail.ru';
+        window.open(regLink.href, "regWin");
+        e.stopPropagation();
+        e.preventDefault();
+    }
+}
+
+if (shareForm) {
+    shareForm.onsubmit = function () {
+        if (shareUrl.value === '') {
+            shareUrl.value = 'http://my.mail.ru';
+        }
+    }
+}
+
+function cls() {
+    window.close();
+    return false;
+}
+
+function reload() {
+    window.location.reload();
+    return 1;
+}
+if (document.getElementById('change-account-link')) {
+    document.getElementById('change-account-link').onclick = function() {
+        var ifr = document.createElement('iframe');
+        ifr.src = 'https://swas.mail.ru/cgi-bin/logout?app=1&cb=reload';
+        ifr.style.position = 'absolute';
+        ifr.style.left = '-1000px';
+        ifr.style.top = '-1000px';
+
+        document.body.appendChild(ifr);
+
+        setTimeout(function() {
+            document.body.appendChild(document.createElement('script')).src = 'https://swas.mail.ru/cgi-bin/logout?app=1&cb=reload';
+        }, 500);
+        return false;
+    }
+}
+if (document.getElementById('close')) {
+    document.getElementById('close').onclick = cls;
+}
+</script>
+<!--[if lte IE 9]>
+<script type="text/javascript">
+(function () {
+    var inputs = document.getElementsByTagName('input'),
+        i = 0;
+
+    for(i; i < inputs.length; i += 1) {
+
+        if (typeof inputs[i].getAttribute('placeholder') !== 'undefinded') {
+
+            if (inputs[i].value === '') {
+                inputs[i].style.color = "#8C8C8C";
+                inputs[i].value = inputs[i].getAttribute('placeholder')
+            }
+
+            inputs[i].onfocus = function () {
+                if (this.value === this.getAttribute('placeholder')) {
+                    this.style.color = "#000000";
+                    this.value = '';
+                }
+            };
+            inputs[i].onblur = function () {
+                if (this.value === '') {
+                    this.style.color = "#8C8C8C";
+                    this.value = this.getAttribute('placeholder');
+                }
+            };
+        }
+    }
+}());
+</script>
+<![endif]-->
+
+<img src="https://rs.mail.ru/d13641088.gif?rnd=123456789&ts=0123456789"
+     style="width:0;height:0;position:absolute;visibility:hidden;" alt=""/>
+
+<!--LiveInternet counter-->
+<script type="text/javascript"><!--
+new Image().src = "//counter.yadro.ru/hit;mail-my?r"+
+escape(document.referrer)+((typeof(screen)=="undefined")?"":
+";s"+screen.width+"*"+screen.height+"*"+(screen.colorDepth?
+screen.colorDepth:screen.pixelDepth))+";u"+escape(document.URL)+
+";"+Math.random();//--></script>
+<!--/LiveInternet-->
+
+</body>
+</html>
