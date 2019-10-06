@@ -1,12 +1,18 @@
 import json
+from os.path import dirname, join
+from urllib.parse import unquote
+
 import pytest
 
-from aiomailru.exceptions import Error, APIError
+from aiomailru.exceptions import Error, OAuthError, APIError
 from aiomailru.utils import SignatureCircuit
 from aiomailru.sessions import (
     PublicSession,
     TokenSession,
+    ImplicitSession,
 )
+
+data_path = join(dirname(__file__), 'data')
 
 
 class TestPublicSession:
@@ -174,3 +180,96 @@ class TestTokenSession:
         error_session.pass_error = False
         with pytest.raises(APIError):
             await error_session.request(params={'key': 'value'})
+
+
+class TestImplicitSession:
+    """Tests of ImplicitSession class."""
+
+    @pytest.yield_fixture
+    async def session(self):
+        s = ImplicitSession(
+            app_id=123,
+            private_key='"private key"',
+            secret_key='"secret key"',
+            email='email@example.ru',
+            passwd='password',
+            scope='permission1 permission2 permission3',
+            uid=789
+        )
+        yield s
+        await s.close()
+
+    @pytest.fixture
+    def auth_dialog(self):
+        with open(join(data_path, 'dialogs', 'auth_dialog.html')) as f:
+            return f.read()
+
+    @pytest.fixture
+    def access_dialog(self):
+        with open(join(data_path, 'dialogs', 'access_dialog.html')) as f:
+            return f.read()
+
+    @pytest.mark.asyncio
+    async def test_get_auth_dialog(self, httpserver, session, auth_dialog):
+        # success
+        httpserver.serve_content(**{
+            'code': 200,
+            'headers': {'Content-Type': 'text/html'},
+            'content': auth_dialog,
+        })
+        session.OAUTH_URL = httpserver.url
+        url, html = await session._get_auth_dialog()
+
+        assert url.query['client_id'] == str(session.app_id)
+        assert url.query['redirect_uri'] == unquote(session.REDIRECT_URI)
+        assert url.query['response_type'] == session.params['response_type']
+        assert url.query['scope'] == session.scope
+        assert html == auth_dialog
+
+        # fail
+        httpserver.serve_content(**{
+            'code': 400,
+            'headers': {'Content-Type': 'text/json'},
+            'content': json.dumps({'error': '', 'error_description': ''})
+        })
+        with pytest.raises(OAuthError):
+            _ = await session._get_auth_dialog()
+
+    @pytest.mark.asyncio
+    async def test_post_auth_dialog(self, httpserver, session,
+                              auth_dialog, access_dialog):
+        # success
+        httpserver.serve_content(**{'code': 200, 'content': access_dialog})
+        auth_dialog = auth_dialog.replace(
+            'https://auth.mail.ru/cgi-bin/auth', httpserver.url,
+        )
+        url, html = await session._post_auth_dialog(auth_dialog)
+        assert html == access_dialog
+
+        # fail
+        httpserver.serve_content(**{'code': 400, 'content': ''})
+        with pytest.raises(OAuthError):
+            _ = await session._post_auth_dialog(auth_dialog)
+
+    @pytest.mark.asyncio
+    async def test_post_access_dialog(self, httpserver, session, access_dialog):
+        # success
+        httpserver.serve_content(**{'code': 200, 'content': 'blank page'})
+        access_dialog = access_dialog.replace(
+            'https://connect.mail.ru/oauth/authorize', httpserver.url
+        )
+        url, html = await session._post_access_dialog(access_dialog)
+        assert html == 'blank page'
+
+        # fail
+        httpserver.serve_content(**{'code': 400, 'content': ''})
+        with pytest.raises(OAuthError):
+            _ = await session._post_access_dialog(access_dialog)
+
+    @pytest.mark.asyncio
+    async def test_get_access_token(self, httpserver, session):
+        # fail
+        httpserver.serve_content(**{'code': 400, 'content': ''})
+        session.OAUTH_URL = httpserver.url
+        with pytest.raises(OAuthError):
+            _ = await session._get_access_token()
