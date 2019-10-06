@@ -13,10 +13,22 @@ cookies_path = f'data/cookies/{test_case_name}.json'
 tokens_path = f'data/tokens/{test_case_name}.json'
 
 
+def update_account(user_acc_name, uid):
+    """Updates account uid."""
+
+    with open(accounts_path) as f:
+        accounts = json.load(f)
+
+    accounts[user_acc_name]['uid'] = uid
+
+    with open(accounts_path, 'w') as fw:
+        json.dump(accounts, fw, indent=2)
+
+
 def update_cookies(user_acc_name, app_id, user_cookies):
     """Updates user cookies."""
 
-    with open(cookies_path, 'r') as fr:
+    with open(cookies_path) as fr:
         cookies = json.load(fr)
 
     if user_acc_name not in cookies:
@@ -61,6 +73,7 @@ async def authorize(user_acc_name, admin_acc_name, app_id):
     })[app_id]
 
     s = await ImplicitSession(**acc_info, **app_info, pass_error=True)
+    update_account(user_acc_name, s.uid)
     update_cookies(user_acc_name, app_id, s.cookies)
     update_token(user_acc_name, app_id, s.session_key)
     await s.close()
