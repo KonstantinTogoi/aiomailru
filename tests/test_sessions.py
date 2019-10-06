@@ -2,7 +2,8 @@ import json
 import os
 
 import aiomailru.logging
-from aiomailru import ImplicitServerSession, ServerSession, API
+from aiomailru import API
+from aiomailru.sessions import TokenSession, ImplicitSession
 
 
 test_case_name = os.environ.get('AIOMAILRU_TEST_CASE_NAME', 'example')
@@ -51,9 +52,15 @@ async def authorize(user_acc_name, admin_acc_name, app_id):
         applications = json.load(f)
 
     acc_info = accounts[user_acc_name]
-    app_info = applications[admin_acc_name][app_id]
+    app_info = applications.get(admin_acc_name, {
+        str(app_id): {
+            'app_id': int(app_id),
+            'secret_key': '',
+            'scope': 'stream messages'
+        }
+    })[app_id]
 
-    s = await ImplicitServerSession(**acc_info, **app_info, pass_error=True)
+    s = await ImplicitSession(**acc_info, **app_info, pass_error=True)
     update_cookies(user_acc_name, app_id, s.cookies)
     update_token(user_acc_name, app_id, s.session_key)
     await s.close()
@@ -62,12 +69,14 @@ async def authorize(user_acc_name, admin_acc_name, app_id):
 async def login(user_acc_name, admin_acc_name, app_id):
     print('login', user_acc_name, 'at', app_id)
 
+    with open(accounts_path) as f:
+        accounts = json.load(f)
     with open(applications_path) as f:
         applications = json.load(f)
-    with open(cookies_path, 'r') as fr:
-        cookies = json.load(fr)
-    with open(tokens_path, 'r') as fr:
-        tokens = json.load(fr)
+    with open(cookies_path) as f:
+        cookies = json.load(f)
+    with open(tokens_path) as f:
+        tokens = json.load(f)
 
     # if account wasn't authorized yet at all
     if user_acc_name not in cookies or user_acc_name not in tokens:
@@ -86,9 +95,15 @@ async def login(user_acc_name, admin_acc_name, app_id):
         with open(tokens_path, 'r') as fr:
             tokens = json.load(fr)
 
-    app_info = applications[admin_acc_name][app_id]
+    acc_info = accounts[user_acc_name]
+    app_info = applications.get(admin_acc_name, {
+        str(app_id): {
+            'app_id': int(app_id),
+            'secret_key': '',
+        }
+    })[app_id]
     token_info = {
         'access_token': tokens[user_acc_name][app_id],
         'cookies': cookies[user_acc_name][app_id],
     }
-    return ServerSession(**app_info, **token_info, pass_error=True)
+    return TokenSession(**acc_info, **app_info, **token_info, pass_error=True)
