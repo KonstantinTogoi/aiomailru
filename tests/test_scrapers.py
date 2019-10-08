@@ -5,7 +5,7 @@ import pytest
 skip_scrapers, reason = False, ''
 try:
     from aiomailru.scrapers import APIScraper
-    from .manager import login
+    from manager import login
 except ModuleNotFoundError:
     skip_scrapers, reason = True, 'pyppeteer not found'
 
