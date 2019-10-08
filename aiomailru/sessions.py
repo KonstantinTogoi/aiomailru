@@ -11,7 +11,7 @@ from .exceptions import (
     InvalidGrantError,
     InvalidClientError,
     InvalidUserError,
-    NotAvailableClientError,
+    ClientNotAvailableError,
     APIError,
 )
 from .parsers import AuthPageParser, AccessPageParser
@@ -277,7 +277,7 @@ class ImplicitSession(TokenSession):
 
             if 'Авторизация запрещена' in html:
                 log.debug('access denied')
-                raise NotAvailableClientError()
+                raise ClientNotAvailableError()
             elif url.path == '/oauth/success.html':
                 log.debug('getting access token')
                 await self._get_access_token()
