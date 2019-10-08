@@ -55,11 +55,11 @@ class InvalidUserError(CustomOAuthError):
     }
 
 
-class NotAvailableClientError(CustomOAuthError):
+class ClientNotAvailableError(CustomOAuthError):
     """Application is not available (in test mode)."""
 
     ERROR = {
-        'error': 'not_available_client',
+        'error': 'client_not_available',
         'error_description': 'application is in the test mode'
     }
 
