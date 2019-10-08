@@ -86,32 +86,32 @@ class APIScrapperError(Error):
 
 
 class CustomAPIError(Error):
-    ERROR = {'error_code': 0, 'error_msg': ''}
+    ERROR = {'error': {'error_code': 0, 'error_msg': ''}}
 
     def __init__(self):
         super().__init__(self.ERROR)
 
 
 class EmptyObjectsError(CustomAPIError):
-    ERROR = {'error_code': 202, 'error_msg': 'empty objects'}
+    ERROR = {'error': {'error_code': 202, 'error_msg': 'empty objects'}}
 
 
 class EmptyGroupsError(CustomAPIError):
-    ERROR = {'error_code': 202, 'error_msg': 'empty groups'}
+    ERROR = {'error': {'error_code': 202, 'error_msg': 'empty groups'}}
 
 
 class AccessDeniedError(CustomAPIError):
-    ERROR = {
+    ERROR = {'error': {
         'error_code': 202,
         'error_msg': 'Access to this object is denied',
-    }
+    }}
 
 
 class BlackListError(CustomAPIError):
-    ERROR = {
+    ERROR = {'error': {
         'error_code': 202,
         'error_msg': 'Access to this object is denied: you are in blacklist',
-    }
+    }}
 
 
 class CookieError(APIScrapperError):
