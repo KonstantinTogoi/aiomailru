@@ -55,6 +55,15 @@ class InvalidUserError(CustomOAuthError):
     }
 
 
+class NotAvailableClientError(CustomOAuthError):
+    """Application is not available (in test mode)."""
+
+    ERROR = {
+        'error': 'not_available_client',
+        'error_description': 'application is in the test mode'
+    }
+
+
 class APIError(Error):
     def __init__(self, error):
         super().__init__(error)

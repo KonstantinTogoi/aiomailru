@@ -1,7 +1,8 @@
-import aiohttp
 import asyncio
 import hashlib
 import logging
+
+import aiohttp
 from yarl import URL
 
 from .exceptions import (
@@ -10,9 +11,10 @@ from .exceptions import (
     InvalidGrantError,
     InvalidClientError,
     InvalidUserError,
+    NotAvailableClientError,
     APIError,
 )
-from .parser import AuthPageParser
+from .parsers import AuthPageParser, AccessPageParser
 from .utils import full_scope, parseaddr, SignatureCircuit, Cookie
 
 
@@ -92,7 +94,7 @@ class TokenSession(PublicSession):
     __slots__ = ('app_id', 'private_key', 'secret_key', 'session_key', 'uid')
 
     def __init__(self, app_id, private_key, secret_key, access_token, uid,
-                 cookies=(), pass_error=False, session=None):
+                 cookies=(), pass_error=False, session=None, **kwargs):
         super().__init__(pass_error, session)
         self.app_id = app_id
         self.private_key = private_key
@@ -200,7 +202,7 @@ class ClientSession(TokenSession):
     ERROR_MSG = 'Pass "uid" and "private_key" to use client-server circuit.'
 
     def __init__(self, app_id, private_key, access_token, uid, cookies=(),
-                 pass_error=False, session=None):
+                 pass_error=False, session=None, **kwargs):
         super().__init__(app_id, private_key, '', access_token, uid, cookies,
                          pass_error, session)
 
@@ -210,7 +212,7 @@ class ServerSession(TokenSession):
     ERROR_MSG = 'Pass "secret_key" to use server-server circuit.'
 
     def __init__(self, app_id, secret_key, access_token, cookies=(),
-                 pass_error=False, session=None):
+                 pass_error=False, session=None, **kwargs):
         super().__init__(app_id, '', secret_key, access_token, '', cookies,
                          pass_error, session)
 
@@ -226,12 +228,13 @@ class ImplicitSession(TokenSession):
     GET_AUTH_DIALOG_ERROR_MSG = 'Failed to open authorization dialog.'
     POST_AUTH_DIALOG_ERROR_MSG = 'Form submission failed.'
     GET_ACCESS_TOKEN_ERROR_MSG = 'Failed to receive access token.'
+    POST_ACCESS_DIALOG_ERROR_MSG = 'Failed to process access dialog.'
 
     __slots__ = ('email', 'passwd', 'scope',
                  'expires_in', 'refresh_token', 'token_type')
 
     def __init__(self, app_id, private_key, secret_key, email, passwd, scope,
-                 pass_error=False, session=None):
+                 pass_error=False, session=None, **kwargs):
         super().__init__(app_id, private_key, secret_key, '', '', (),
                          pass_error, session)
         self.email = email
@@ -264,15 +267,25 @@ class ImplicitSession(TokenSession):
                 log.debug(f'authorizing at {url}')
                 url, html = await self._post_auth_dialog(html)
 
-            if url.path == '/oauth/success.html':
+            if url.path == '/oauth/authorize':
+                if 'fail' in url.query:
+                    log.error(f'Invalid e-mail {self.email} or password.')
+                    raise InvalidGrantError()
+                elif 'Необходим доступ к вашим данным' in html:
+                    log.debug(f'giving rights at {url}')
+                    url, html = await self._post_access_dialog(html)
+
+            if 'Авторизация запрещена' in html:
+                log.debug('access denied')
+                raise NotAvailableClientError()
+            elif url.path == '/oauth/success.html':
+                log.debug('getting access token')
                 await self._get_access_token()
+                log.debug('authorized successfully')
                 return self
             elif url.path == '/recovery':
                 log.error(f'User {self.email} is blocked.')
                 raise InvalidUserError()
-            elif url.query.get('fail') == '1':
-                log.error(f'Invalid e-mail {self.email} or password.')
-                raise InvalidGrantError()
 
             await asyncio.sleep(retry_interval)
         else:
@@ -323,6 +336,33 @@ class ImplicitSession(TokenSession):
 
         return url, html
 
+    async def _post_access_dialog(self, html):
+        """Clicks button 'allow' in a page with access dialog.
+
+        Args:
+            html (str): html code of the page with access form.
+
+        Returns:
+            url (URL): redirected page's URL.
+            html (str): redirected page's html code.
+
+        """
+
+        parser = AccessPageParser()
+        parser.feed(html)
+        parser.close()
+
+        form_url, form_data = parser.form
+
+        async with self.session.post(form_url, data=form_data) as resp:
+            if resp.status != 200:
+                log.error(self.POST_ACCESS_DIALOG_ERROR_MSG)
+                raise OAuthError(self.POST_ACCESS_DIALOG_ERROR_MSG)
+            else:
+                url, html = resp.url, await resp.text()
+
+        return url, html
+
     async def _get_access_token(self):
         async with self.session.get(self.OAUTH_URL, params=self.params) as resp:
             if resp.status != 200:
@@ -344,13 +384,13 @@ class ImplicitSession(TokenSession):
 
 class ImplicitClientSession(ImplicitSession):
     def __init__(self, app_id, private_key, email, passwd, scope,
-                 pass_error=False, session=None):
+                 pass_error=False, session=None, **kwargs):
         super().__init__(app_id, private_key, '', email, passwd, scope,
                          pass_error, session)
 
 
 class ImplicitServerSession(ImplicitSession):
     def __init__(self, app_id, secret_key, email, passwd, scope,
-                 pass_error=False, session=None):
+                 pass_error=False, session=None, **kwargs):
         super().__init__(app_id, '', secret_key, email, passwd, scope,
                          pass_error, session)
