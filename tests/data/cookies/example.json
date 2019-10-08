@@ -1,6 +1,6 @@
 {
-  "<account_name>": {
-    "<application_id>": [
+  "<acc_name>": {
+    "<acc_name_app_name_1>": [
       {
         "name": "GarageID",
         "value": "",

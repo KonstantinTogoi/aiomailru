@@ -1,6 +1,6 @@
 {
-  "<admin_account_name>": {
-    "<application_id>": {
+  "<admin_acc_name>": {
+    "<admin_acc_name_app_name_1>": {
       "app_id": 123456,
       "private_key": "<application_private_key>",
       "secret_key": "<application_secret_key>",
