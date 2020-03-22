@@ -203,7 +203,7 @@ class GroupsGet(scraper):
         log.debug('scrape subset: offset={0}, limit={1}'.format(offset, limit))
 
         groups, cnt = [], 0
-        async for group in self.groups(ext):
+        async for group in self.Iterator(self, ext):
             if cnt < offset:
                 continue
             else:
@@ -215,37 +215,64 @@ class GroupsGet(scraper):
 
         return groups
 
-    async def groups(self, ext):
-        hidden_bar, bar, elements = None, True, []
+    class Iterator:
+        """Yields groups from the beginning to the end."""
 
-        while True:
-            offset = len(elements)
-            catalog = await self.page.J(self.ss.catalog)
-            if catalog:
-                elements = await catalog.JJ(self.ss.item)
-            else:
-                break
-            for element in elements[offset:]:
-                item = await GroupItem.from_element(element)
-                link = item['link'].lstrip('/')
-                resp = await self.api.session.public_request([link])
-                group = await self.api.users.getInfo(uids=resp['uid'])
-                yield group[0] if ext else group[0]['uid']
+        def __init__(self, method, ext):
+            self.counter = 0
+            self.m = method
+            self.ext = ext
 
-            if await self.page.J(self.ss.button):
-                await self.page.evaluate(self.s.click)
+            self.catalog = None
+            self.load_more_hidden_bar = None
+            self.load_more_bar = True
+            self.elements = []
 
+        async def __aiter__(self):
+            self.catalog = await self.m.page.J(self.m.ss.catalog)
+            if self.catalog:
+                self.elements = await self.catalog.JJ(self.m.ss.item)
+            return self
+
+        async def __anext__(self):
+            if self.counter >= self.offset:
+                if self.load_more_bar is None:
+                    raise StopAsyncIteration
+                elif self.load_more_hidden_bar is not None:
+                    raise StopAsyncIteration
+                else:
+                    await self.load_more()
+
+            if self.catalog is None:
+                raise StopAsyncIteration
+
+            i = self.counter
+            self.counter += 1
+
+            element = self.elements[i]
+            item = await GroupItem.from_element(element)
+            link = item['link'].lstrip('/')
+            resp = await self.m.api.session.public_request([link])
+            group = await self.m.api.users.getInfo(uids=resp['uid'])
+            return group[0] if self.ext else group[0]['uid']
+
+        @property
+        def offset(self):
+            return len(self.elements)
+
+        async def load_more(self):
+            # click 'more' button
+            if await self.m.page.J(self.m.ss.button):
+                await self.m.page.evaluate(self.m.s.click)
+            # wait downloading
             progress_button = True
             while progress_button:
-                progress_button = await self.page.J(self.ss.progress_button)
-
-            # if current iteration should be the last
-            if hidden_bar is not None or bar is None:
-                break
-
-            # last iteration flag
-            bar = await self.page.J(self.ss.bar)  # if is absent
-            hidden_bar = await self.page.J(self.ss.hidden_bar)  # if is present
+                progress_button = await self.m.page.J(self.m.ss.progress_button)
+            # get groups' DOM elements
+            self.elements = await self.catalog.JJ(self.m.ss.item)
+            # get 'load more' bar
+            self.load_more_hidden_bar = await self.m.page.J(self.m.ss.hidden_bar)
+            self.load_more_bar = await self.m.page.J(self.m.ss.bar)
 
 
 class GroupsGetInfo(multiscraper):
@@ -379,8 +406,6 @@ class StreamGetByAuthor(scraper):
             content = '%s div.content-wrapper' % feed
             event = '%s div.b-history-event[data-astat]' % stream
 
-        stream_state = scraper.sst.getattr % 'data-state'
-
     s = Scripts
     ss = Scripts.Selectors
 
@@ -409,7 +434,7 @@ class StreamGetByAuthor(scraper):
 
         try:
             events = []
-            async for event in self.stream():
+            async for event in self.Iterator(self):
                 if skip:
                     skip = skip if event['id'] != skip else False
                 else:
@@ -425,44 +450,69 @@ class StreamGetByAuthor(scraper):
 
         return events
 
-    async def stream(self):
+    class Iterator:
         """Yields stream events from the beginning to the end."""
 
-        ended_stream, elements = None, []
+        def __init__(self, method):
+            self.counter = 0
+            self.m = method
 
-        while True:
-            offset = len(elements)
-            content = await self.page.J(self.ss.content)
+            self.ended_stream = None
+            self.elements = []
+            self.events = []
+            self.content = None
 
-            if content is None:
-                signage = await self.page.J(self.ss.closed_signage)
+        async def __aiter__(self):
+            self.content = await self.m.page.J(self.m.ss.content)
+            if self.content is None:
+                log.debug('content is None ' + self.m.ss.content)
+                signage = await self.m.page.J(self.m.ss.closed_signage)
                 if signage:
                     raise AccessDeniedError()
                 else:
                     raise BlackListError()
+            self.elements = await self.content.JJ(self.m.ss.event)
+            for element in self.elements[self.offset:]:
+                self.events.append(await Event.from_element(element))
+            return self
 
-            elements = await content.JJ(self.ss.event)
-            for element in elements[offset:]:
-                yield await Event.from_element(element)
+        async def __anext__(self):
+            if self.counter >= self.offset:
+                if await self.m.page.J(self.m.ss.ended_stream):
+                    raise StopAsyncIteration
+                else:
+                    await self.load_more()
 
-            await self.page.evaluate(self.s.scroll)
+            if self.content is None:
+                raise StopAsyncIteration
 
+            i = self.counter
+            self.counter += 1
+
+            return self.events[i]
+
+        @property
+        def offset(self):
+            return len(self.events)
+
+        async def load_more(self):
+            await self.m.page.evaluate(self.m.s.scroll)  # scroll
+
+            # until stream's state is updated to 'loaded'
             loading_stream, updating_stream = True, True
             while loading_stream or updating_stream:
                 stream = False
-                while not stream and content:
-                    stream = await self.page.waitForSelector(self.ss.stream)
-                    content = await self.page.J(self.ss.content)
+                # until stream's state is updated to 'loading' or 'updating'
+                while not stream and self.content:
+                    stream = await self.m.page.waitForSelector(self.m.ss.stream)
+                    self.content = await self.m.page.J(self.m.ss.content)
 
-                loading_stream = await self.page.J(self.ss.loading_stream)
-                updating_stream = await self.page.J(self.ss.updating_stream)
+                loading_stream = await self.m.page.J(self.m.ss.loading_stream)
+                updating_stream = await self.m.page.J(self.m.ss.updating_stream)
 
-            # if current iteration should be the last
-            if ended_stream is not None:
-                break
-
-            # last iteration flag
-            ended_stream = await self.page.J(self.ss.ended_stream)
+            self.elements = await self.content.JJ(self.m.ss.event)
+            for element in self.elements[self.offset:]:
+                self.events.append(await Event.from_element(element))
 
 
 scrapers = {
