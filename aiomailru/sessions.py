@@ -64,13 +64,13 @@ class PublicSession(Session):
 
         """
 
-        url = f'{self.PUBLIC_URL}/{"/".join(segments)}'
+        url = self.PUBLIC_URL + '/' + '/'.join(segments)
 
         try:
             async with self.session.get(url, params=params) as resp:
                 content = await resp.json(content_type=self.CONTENT_TYPE)
         except aiohttp.ContentTypeError:
-            msg = f'got non-REST path: {url}'
+            msg = 'got non-REST path: %s' % url
             log.error(msg)
             raise Error(msg)
 
@@ -88,7 +88,7 @@ class PublicSession(Session):
 class TokenSession(PublicSession):
     """Session for sending authorized requests."""
 
-    API_URL = f'{PublicSession.PUBLIC_URL}/api'
+    API_URL = PublicSession.PUBLIC_URL + '/api'
     ERROR_MSG = 'See https://api.mail.ru/docs/guides/restapi/#sig.'
 
     __slots__ = ('app_id', 'private_key', 'secret_key', 'session_key', 'uid')
@@ -136,12 +136,12 @@ class TokenSession(PublicSession):
         return params
 
     def params_to_str(self, params):
-        query = ''.join(f'{k}={str(params[k])}' for k in sorted(params))
+        query = ''.join(k + '=' + str(params[k]) for k in sorted(params))
 
         if self.sig_circuit is SignatureCircuit.CLIENT_SERVER:
-            return f'{self.uid}{query}{self.private_key}'
+            return str(self.uid) + query + self.private_key
         elif self.sig_circuit is SignatureCircuit.SERVER_SERVER:
-            return f'{query}{self.secret_key}'
+            return query + self.secret_key
         else:
             raise Error(self.ERROR_MSG)
 
@@ -177,7 +177,7 @@ class TokenSession(PublicSession):
 
         """
 
-        url = f'{self.API_URL}/{"/".join(segments)}'
+        url = self.API_URL + '/' + '/'.join(segments)
 
         params = {k: params[k] for k in params if params[k]}
         params.update(self.required_params)
@@ -258,21 +258,21 @@ class ImplicitSession(TokenSession):
         retry_interval = retry_interval or self.AUTHORIZE_RETRY_INTERVAL
 
         for attempt_num in range(num_attempts):
-            log.debug(f'getting authorization dialog {self.OAUTH_URL}')
+            log.debug('getting authorization dialog %s' % self.OAUTH_URL)
             url, html = await self._get_auth_dialog()
 
             if 'Не указано приложение' in html:
                 raise InvalidClientError()
             elif url.path == '/oauth/authorize':
-                log.debug(f'authorizing at {url}')
+                log.debug('authorizing at %s' % url)
                 url, html = await self._post_auth_dialog(html)
 
             if url.path == '/oauth/authorize':
                 if 'fail' in url.query:
-                    log.error(f'Invalid e-mail {self.email} or password.')
+                    log.error('Invalid e-mail %s or password.' % self.email)
                     raise InvalidGrantError()
                 elif 'Необходим доступ к вашим данным' in html:
-                    log.debug(f'giving rights at {url}')
+                    log.debug('giving rights at %s' % url)
                     url, html = await self._post_access_dialog(html)
 
             if 'Авторизация запрещена' in html:
@@ -284,13 +284,13 @@ class ImplicitSession(TokenSession):
                 log.debug('authorized successfully')
                 return self
             elif url.path == '/recovery':
-                log.error(f'User {self.email} is blocked.')
+                log.error('User %s is blocked.' % self.email)
                 raise InvalidUserError()
 
             await asyncio.sleep(retry_interval)
         else:
-            log.error(f'{num_attempts} login attempts exceeded.')
-            raise OAuthError(f'{num_attempts} login attempts exceeded.')
+            log.error('%d login attempts exceeded.' % num_attempts)
+            raise OAuthError('%d login attempts exceeded.' % num_attempts)
 
     async def _get_auth_dialog(self):
         """Returns url and html code of authorization dialog."""
@@ -324,7 +324,7 @@ class ImplicitSession(TokenSession):
 
         domain, login = parseaddr(self.email)
         form_data['Login'] = login
-        form_data['Domain'] = f'{domain}.ru'
+        form_data['Domain'] = domain + '.ru'
         form_data['Password'] = self.passwd
 
         async with self.session.post(form_url, data=form_data) as resp:
@@ -370,7 +370,7 @@ class ImplicitSession(TokenSession):
                 raise OAuthError(self.GET_ACCESS_TOKEN_ERROR_MSG)
             else:
                 location = URL(resp.history[-1].headers['Location'])
-                url = URL(f'?{location.fragment}')
+                url = URL('?' + location.fragment)
 
         try:
             self.session_key = url.query['access_token']
@@ -379,7 +379,7 @@ class ImplicitSession(TokenSession):
             self.token_type = url.query['token_type']
             self.uid = url.query['x_mailru_vid']
         except KeyError as e:
-            raise OAuthError(f'"{e.args[0]}" is missing in the auth response')
+            raise OAuthError(str(e.args[0]) + ' is missing in the response')
 
 
 class ImplicitClientSession(ImplicitSession):

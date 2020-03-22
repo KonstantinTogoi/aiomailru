@@ -48,10 +48,10 @@ class APIScraperMethod(APIMethod):
                 ' div.l-content__center'
                 ' div.l-content__center__inner'
             )
-            main_page = f'{content} div.b-community__main-page'
-            closed_signage = f'{main_page} div.mf_cc'
-            profile = f'{main_page} div.profile'
-            profile_content = f'{profile} div.profile__contentBlock'
+            main_page = '%s div.b-community__main-page' % content
+            closed_signage = '%s div.mf_cc' % main_page
+            profile = '%s div.profile' % main_page
+            profile_content = '%s div.profile__contentBlock' % profile
 
             class SelectorTemplates:
                 """Common templates of selectors."""
@@ -61,15 +61,13 @@ class APIScraperMethod(APIMethod):
         class ScriptTemplates:
             """Common templates of scripts."""
             getattr = 'n => n.getAttribute("%s")'
-            getclass = getattr % 'class'
-            getstyle = getattr % 'style'
             selector = 'document.querySelector("%s")'
             selector_all = 'document.querySelectorAll("%s")'
-            click = f'{selector}.click()'
-            computed_style = f'window.getComputedStyle({selector})'
-            display = f'{computed_style}["display"]'
-            visible = f'{display} != "none"'
-            length = f'{selector_all}.length'
+            click = '{0}.click()'.format(selector)
+            computed_style = 'window.getComputedStyle({0})'.format(selector)
+            display = '{0}["display"]'.format(computed_style)
+            visible = '{0} != "none"'.format(display)
+            length = '{0}.length'.format(selector_all)
 
         scroll = 'window.scroll(0, document.body.scrollHeight)'
 
@@ -83,7 +81,7 @@ class APIScraperMethod(APIMethod):
         self.page = None
 
     def __getattr__(self, name):
-        name = f'{self.name}.{name}'
+        name = self.name + '.' + name
         return scrapers.get(name, APIMethod)(self.api, name)
 
     async def __call__(self, scrape=False, **params):
@@ -161,23 +159,23 @@ class GroupsGet(scraper):
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
             groups = (
-                f'{scraper.ss.content}'
+                scraper.ss.content +
                 ' div.groups-catalog'
                 ' div.groups-catalog__mine-groups'
                 ' div.groups-catalog__small-groups'
             )
-            bar = f'{groups} div.groups-catalog__groups-more'
+            bar = '%s div.groups-catalog__groups-more' % groups
             hidden_bar = scraper.ssst.hidden % bar
             visible_bar = scraper.ssst.visible % bar
-            catalog = f'{groups} div.groups__container'
-            button = f'{bar} span.ui-button-gray'
-            progress_button = f'{bar} span.progress'
-            item = f'{catalog} div.groups__item'
+            catalog = '%s div.groups__container' % groups
+            button = '%s span.ui-button-gray' % bar
+            progress_button = '%s span.progress' % bar
+            item = '%s div.groups__item' % catalog
 
         click = scraper.sst.click % Selectors.button
         button_class = scraper.sst.getattr % 'class'
         bar_css = scraper.sst.getattr % 'style'
-        loaded = f'{scraper.sst.length % Selectors.item} > %d'
+        loaded = '{0} > %d'.format(scraper.sst.length % Selectors.item)
 
     s = Scripts
     ss = Scripts.Selectors
@@ -187,7 +185,7 @@ class GroupsGet(scraper):
         if isinstance(info, dict):
             return info
         url = self.url
-        log.debug(f'go to {url}')
+        log.debug('go to %s' % url)
         self.page = await self.api.page(
             url,
             self.api.session.session_key,
@@ -202,7 +200,7 @@ class GroupsGet(scraper):
 
     async def scrape(self, ext, limit, offset):
         """Appends groups from the `page` to the `groups` list."""
-        log.debug(f'scrape subset: offset={offset}, limit={limit}')
+        log.debug('scrape subset: offset={0}, limit={1}'.format(offset, limit))
 
         groups, cnt = [], 0
         async for group in self.groups(ext):
@@ -268,7 +266,7 @@ class GroupsGetInfo(multiscraper):
         if isinstance(info, dict):
             return info
         url = info[0]['link']
-        log.debug(f'go to {url}')
+        log.debug('go to %s' % url)
         self.page = await self.api.page(
             url,
             self.api.session.session_key,
@@ -307,20 +305,20 @@ class GroupsJoin(scraper):
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
             links = (
-                f'{scraper.ss.profile_content}'
+                scraper.ss.profile_content +
                 ' div.profile__activeLinks'
                 ' div.profile__activeLinks_community'
             )
-            join_span = f'{links} span.profile__activeLinks_button_enter'
-            sent_span = f'{links} span.profile__activeLinks_link_modarated'
-            approved_span = f'{links} span.profile__activeLinks_link_inGroup'
-            auth_span = f'{links} div.l-popup_community-authorization'
+            join_span = '%s span.profile__activeLinks_button_enter' % links
+            sent_span = '%s span.profile__activeLinks_link_modarated' % links
+            approved_span = '%s span.profile__activeLinks_link_inGroup' % links
+            auth_span = '%s div.l-popup_community-authorization' % links
 
         join_span_visible = scraper.sst.visible % Selectors.join_span
         sent_span_visible = scraper.sst.visible % Selectors.sent_span
         approved_span_visible = scraper.sst.visible % Selectors.approved_span
 
-        join_click = f'{scraper.sst.click % Selectors.join_span}'
+        join_click = '{0}'.format(scraper.sst.click % Selectors.join_span)
 
     s = Scripts
     ss = Scripts.Selectors
@@ -330,7 +328,7 @@ class GroupsJoin(scraper):
         if isinstance(info, dict):
             return info
         url = info[0]['link']
-        log.debug(f'go to {url}')
+        log.debug('go to %s' % url)
         self.page = await self.api.page(
             url,
             self.api.session.session_key,
@@ -372,14 +370,14 @@ class StreamGetByAuthor(scraper):
 
     class Scripts(scraper.s):
         class Selectors(scraper.ss):
-            feed = f'{scraper.ss.main_page} div.b-community__main-page__feed'
-            stream = f'{feed} div.b-history[data-state]'
-            updating_stream = f'{stream}[data-state=""]'
-            loading_stream = f'{stream}[data-state="loading"]'
-            loaded_stream = f'{stream}[data-state="loaded"]'
-            ended_stream = f'{stream}[data-state="noevents"]'
-            content = f'{feed} div.content-wrapper'
-            event = f'{stream} div.b-history-event[data-astat]'
+            feed = '%s div.b-community__main-page__feed' % scraper.ss.main_page
+            stream = '%s div.b-history[data-state]' % feed
+            updating_stream = '%s[data-state=""]' % stream
+            loading_stream = '%s[data-state="loading"]' % stream
+            loaded_stream = '%s[data-state="loaded"]' % stream
+            ended_stream = '%s[data-state="noevents"]' % stream
+            content = '%s div.content-wrapper' % feed
+            event = '%s div.b-history-event[data-astat]' % stream
 
         stream_state = scraper.sst.getattr % 'data-state'
 
@@ -391,7 +389,7 @@ class StreamGetByAuthor(scraper):
         if isinstance(info, dict):
             return info
         url = info[0]['link']
-        log.debug(f'go to {url}')
+        log.debug('go to %s' % url)
         self.page = await self.api.page(
             url,
             self.api.session.session_key,
@@ -407,7 +405,7 @@ class StreamGetByAuthor(scraper):
     async def scrape(self, limit, skip):
         """Returns a list of events from user or community stream."""
 
-        log.debug(f'scrape subset: skip={skip}, limit={limit}')
+        log.debug('scrape subset: skip={0}, limit={1}'.format(skip, limit))
 
         try:
             events = []

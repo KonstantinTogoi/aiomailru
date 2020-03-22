@@ -20,10 +20,10 @@ class FormParser(html.parser.HTMLParser):
         attrs = defaultdict(str, attrs)
 
         if tag == 'input':
-            if attrs['type'] != 'submit':
+            if attrs['type'].lower() != 'submit':
                 self.inputs[attrs['name']] = attrs['value']
         elif tag == 'form':
-            if attrs['method'] == 'post':
+            if attrs['method'].lower() == 'post':
                 self.url = attrs['action']
 
 

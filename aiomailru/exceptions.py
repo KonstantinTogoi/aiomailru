@@ -1,3 +1,6 @@
+"""Exceptions."""
+
+
 class Error(Exception):
 
     @property
@@ -71,7 +74,7 @@ class APIError(Error):
         self.msg = error['error_msg']
 
     def __str__(self):
-        return f'Error {self.code}: {self.msg}'
+        return 'Error {code}: {msg}'.format(code=self.code, msg=self.msg)
 
 
 class APIScrapperError(Error):
@@ -82,7 +85,7 @@ class APIScrapperError(Error):
         self.msg = msg
 
     def __str__(self):
-        return f'Error {self.code}: {self.msg}'
+        return 'Error {code}: {msg}'.format(code=self.code, msg=self.msg)
 
 
 class CustomAPIError(Error):

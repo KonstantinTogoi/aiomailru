@@ -8,14 +8,14 @@ class Event(UserDict):
         class Selectors:
             event_class = 'b-history_event_active-area_shift'
             subevent_class = 'b-history_event_active-area'
-            event = f'div.{event_class}'
-            subevent = f'div.{subevent_class}:not(.{event_class})'
+            event = 'div.%s' % event_class
+            subevent = 'div.%s:not(.%s)' % (subevent_class, event_class)
 
             head = 'div.b-history-event_head'
-            action = f'{head} div.b-history-event__action'
-            author = f'{action} .b-history-event__ownername'
-            time = f'{action} div.b-history-event_time'
-            url = f'{time} a'
+            action = '%s div.b-history-event__action' % head
+            author = '%s .b-history-event__ownername' % action
+            time = '%s div.b-history-event_time' % action
+            url = '%s a' % time
 
             text = (
                 'div.b-history-event__body '
@@ -25,7 +25,7 @@ class Event(UserDict):
                 'div.b-history-event__body '
                 'div.b-history-event__event-textbox_status '
             )
-            links = f'{status} a'
+            links = '%s a' % status
 
             comments = 'div.b-comments__history'
 
@@ -154,7 +154,7 @@ class Event(UserDict):
         # scrape 'click_url'
         if elem_type in cls.t.clickable:
             url = await elem.Jeval(cls.ss.url, cls.s.url)
-        body['click_url'] = f'https://my.mail.ru{url}' if url else url
+        body['click_url'] = 'https://my.mail.ru%s' % url if url else url
 
         # scrape 'user_text' and 'text_media'
         if elem_type == cls.t.status:

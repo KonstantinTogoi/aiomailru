@@ -54,10 +54,10 @@ class Manager:
             json.dump(value, f, indent=2)
 
     def __init__(self, test_case_name=TEST_CASE_NAME):
-        self.accounts_path = f'data/accounts/{test_case_name}.json'
-        self.applications_path = f'data/applications/{test_case_name}.json'
-        self.cookies_path = f'data/cookies/{test_case_name}.json'
-        self.tokens_path = f'data/tokens/{test_case_name}.json'
+        self.accounts_path = 'data/accounts/{0}.json'.format(test_case_name)
+        self.applications_path = 'data/applications/{0}.json'.format(test_case_name)
+        self.cookies_path = 'data/cookies/{0}.json'.format(test_case_name)
+        self.tokens_path = 'data/tokens/{0}.json'.format(test_case_name)
 
     def update_account(self, user_acc_name, uid):
         """Updates account uid."""
