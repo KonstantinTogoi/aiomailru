@@ -13,6 +13,7 @@ from .exceptions import (
     InvalidUserError,
     ClientNotAvailableError,
     APIError,
+    EmptyResponseError,
 )
 from .parsers import AuthPageParser, AccessPageParser
 from .utils import full_scope, parseaddr, SignatureCircuit, Cookie
@@ -77,10 +78,13 @@ class PublicSession(Session):
         if self.pass_error:
             response = content
         elif 'error' in content:
-            log.error(content['error'])
-            raise APIError(content['error'])
-        else:
+            log.error(content)
+            raise APIError(content)
+        elif content:
             response = content
+        else:
+            log.error('got empty response: %s' % url)
+            raise EmptyResponseError()
 
         return response
 
@@ -189,10 +193,13 @@ class TokenSession(PublicSession):
         if self.pass_error:
             response = content
         elif 'error' in content:
-            log.error(content['error'])
-            raise APIError(content['error'])
-        else:
+            log.error(content)
+            raise APIError(content)
+        elif content:
             response = content
+        else:
+            log.error('got empty response: %s' % url)
+            raise EmptyResponseError()
 
         return response
 

@@ -70,8 +70,8 @@ class ClientNotAvailableError(CustomOAuthError):
 class APIError(Error):
     def __init__(self, error):
         super().__init__(error)
-        self.code = error['error_code']
-        self.msg = error['error_msg']
+        self.code = error['error']['error_code']
+        self.msg = error['error']['error_msg']
 
     def __str__(self):
         return 'Error {code}: {msg}'.format(code=self.code, msg=self.msg)
@@ -88,11 +88,17 @@ class APIScrapperError(Error):
         return 'Error {code}: {msg}'.format(code=self.code, msg=self.msg)
 
 
-class CustomAPIError(Error):
+class CustomAPIError(APIError):
+    """Custom API error."""
+
     ERROR = {'error': {'error_code': 0, 'error_msg': ''}}
 
     def __init__(self):
         super().__init__(self.ERROR)
+
+
+class EmptyResponseError(CustomAPIError):
+    ERROR = {'error': {'error_code': -1, 'error_msg': 'empty response'}}
 
 
 class EmptyObjectsError(CustomAPIError):
