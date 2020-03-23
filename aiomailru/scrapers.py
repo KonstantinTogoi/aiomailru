@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import sys
 from functools import wraps
 
 from .exceptions import (
@@ -17,6 +18,28 @@ from .api import API, APIMethod
 from .browser import Browser
 from .objects import Event, GroupItem
 from .sessions import TokenSession
+
+
+# monkey patching for python 3.5
+if sys.version_info[1] == 5:
+    from collections import OrderedDict
+    from pyppeteer.execution_context import JSHandle
+
+    async def get_properties(self):
+        """Get all properties of this handle."""
+        response = (await self._client.send('Runtime.getProperties', {
+            'objectId': self._remoteObject.get('objectId', ''),
+            'ownProperties': True,
+        }))
+        result = OrderedDict()
+        for prop in response['result']:
+            if prop.get('enumerable'):
+                key = prop.get('name')
+                value = prop.get('value')
+                result[key] = self._context._objectHandleFactory(value)
+        return result
+
+    JSHandle.getProperties = get_properties
 
 
 log = logging.getLogger(__name__)
