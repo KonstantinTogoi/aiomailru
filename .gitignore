@@ -105,6 +105,3 @@ venv.bak/
 
 # PyCharm
 .idea/
-
-# Test accounts and applications
-tests/data/*/dev.json
