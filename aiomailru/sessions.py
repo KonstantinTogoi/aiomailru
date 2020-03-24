@@ -459,7 +459,7 @@ class ImplicitSession(TokenSession):
             self.session_key = url.query['access_token']
             self.expires_in = url.query.get('expires_in')
             self.refresh_token = url.query['refresh_token']
-            self.token_type = url.query['token_type']
+            self.token_type = url.query.get('token_type')
             self.uid = url.query.get('x_mailru_vid')
         except KeyError as e:
             raise OAuthError(str(e.args[0]) + ' is missing in the response')
@@ -529,9 +529,66 @@ class PasswordSession(TokenSession):
         elif content:
             try:
                 self.refresh_token = content['refresh_token']
-                self.expires_in = content['expires_in']
+                self.expires_in = content.get('expires_in')
                 self.session_key = content['access_token']
-                self.uid = content['x_mailru_vid']
+                self.uid = content.get('x_mailru_vid')
+            except KeyError as e:
+                raise OAuthError(str(e.args[0]) + ' is missing in the response')
+        else:
+            raise OAuthError('got empty authorization response')
+
+        return self
+
+
+class RefreshSession(TokenSession):
+    """Session with authorization with OAuth 2.0 (Refresh Token).
+
+    The Refresh Token grant type is used by clients to exchange
+    a refresh token for an access token when the access token has expired.
+
+    .. _OAuth 2.0 Refresh Token
+        https://oauth.net/2/grant-types/refresh-token/
+
+    .. _Использование refresh_token
+        https://api.mail.ru/docs/guides/oauth/client-credentials/#refresh_token
+
+    """
+
+    OAUTH_URL = 'https://appsmail.ru/oauth/token'
+
+    __slots__ = ('refresh_token', 'expires_in')
+
+    def __init__(self, app_id, private_key, secret_key, refresh_token,
+                 pass_error=False, session=None, **kwargs):
+        super().__init__(app_id, private_key, secret_key, '', '', (),
+                         pass_error, session, **kwargs)
+        self.refresh_token = refresh_token
+
+    @property
+    def params(self):
+        """Authorization request's parameters."""
+        return {
+            'grant_type': 'refresh_token',
+            'client_id': self.app_id,
+            'refresh_token': self.refresh_token,
+            'client_secret': self.secret_key,
+        }
+
+    async def authorize(self):
+        """Authorize with OAuth 2.0 (Refresh Token)."""
+
+        async with self.session.post(self.OAUTH_URL, data=self.params) as resp:
+            content = await resp.json(content_type=self.CONTENT_TYPE)
+
+        if 'error' in content:
+            log.error(content)
+            raise OAuthError(content)
+        elif content:
+            try:
+                self.refresh_token = content['refresh_token']
+                self.expires_in = content.get('expires_in')
+                self.session_key = content['access_token']
+                self.uid = content.get('x_mailru_vid')
             except KeyError as e:
                 raise OAuthError(str(e.args[0]) + ' is missing in the response')
         else:
