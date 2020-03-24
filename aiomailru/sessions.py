@@ -314,12 +314,12 @@ class ImplicitSession(TokenSession):
     POST_ACCESS_DIALOG_ERROR_MSG = 'Failed to process access dialog.'
 
     __slots__ = ('email', 'passwd', 'scope',
-                 'expires_in', 'refresh_token', 'token_type')
+                 'refresh_token', 'expires_in', 'token_type')
 
     def __init__(self, app_id, private_key, secret_key, email, passwd, scope,
                  pass_error=False, session=None, **kwargs):
         super().__init__(app_id, private_key, secret_key, '', '', (),
-                         pass_error, session)
+                         pass_error, session, **kwargs)
         self.email = email
         self.passwd = passwd
         self.scope = scope or full_scope()
@@ -457,10 +457,10 @@ class ImplicitSession(TokenSession):
 
         try:
             self.session_key = url.query['access_token']
-            self.expires_in = url.query['expires_in']
+            self.expires_in = url.query.get('expires_in')
             self.refresh_token = url.query['refresh_token']
             self.token_type = url.query['token_type']
-            self.uid = url.query['x_mailru_vid']
+            self.uid = url.query.get('x_mailru_vid')
         except KeyError as e:
             raise OAuthError(str(e.args[0]) + ' is missing in the response')
 
@@ -469,11 +469,72 @@ class ImplicitClientSession(ImplicitSession):
     def __init__(self, app_id, private_key, email, passwd, scope,
                  pass_error=False, session=None, **kwargs):
         super().__init__(app_id, private_key, '', email, passwd, scope,
-                         pass_error, session)
+                         pass_error, session, **kwargs)
 
 
 class ImplicitServerSession(ImplicitSession):
     def __init__(self, app_id, secret_key, email, passwd, scope,
                  pass_error=False, session=None, **kwargs):
         super().__init__(app_id, '', secret_key, email, passwd, scope,
-                         pass_error, session)
+                         pass_error, session, **kwargs)
+
+
+class PasswordSession(TokenSession):
+    """Session with authorization with OAuth 2.0 (Password Grant).
+
+    The Password grant type is a way to exchange a user's credentials
+    for an access token.
+
+    .. _OAuth 2.0 Password Grant
+        https://oauth.net/2/grant-types/password/
+
+    .. _Авторизация по логину и паролю
+        https://api.mail.ru/docs/guides/oauth/client-credentials/
+
+    """
+
+    OAUTH_URL = 'https://appsmail.ru/oauth/token'
+
+    __slots__ = ('email', 'passwd', 'scope', 'refresh_token', 'expires_in')
+
+    def __init__(self, app_id, private_key, secret_key, email, passwd, scope,
+                 pass_error=False, session=None, **kwargs):
+        super().__init__(app_id, private_key, secret_key, '', '', (),
+                         pass_error, session, **kwargs)
+        self.email = email
+        self.passwd = passwd
+        self.scope = scope or full_scope()
+
+    @property
+    def params(self):
+        """Authorization request's parameters."""
+        return {
+            'grant_type': 'password',
+            'client_id': self.app_id,
+            'client_secret': self.secret_key,
+            'username': self.email,
+            'password': self.passwd,
+            'scope': self.scope,
+        }
+
+    async def authorize(self):
+        """Authorize with OAuth 2.0 (Password Grant)."""
+
+        async with self.session.post(self.OAUTH_URL, data=self.params) as resp:
+            content = await resp.json(content_type=self.CONTENT_TYPE)
+
+        if 'error' in content:
+            log.error(content)
+            raise OAuthError(content)
+        elif content:
+            try:
+                self.refresh_token = content['refresh_token']
+                self.expires_in = content['expires_in']
+                self.session_key = content['access_token']
+                self.uid = content['x_mailru_vid']
+            except KeyError as e:
+                raise OAuthError(str(e.args[0]) + ' is missing in the response')
+        else:
+            raise OAuthError('got empty authorization response')
+
+        return self
