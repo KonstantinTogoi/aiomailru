@@ -1,5 +1,5 @@
 from os.path import dirname, join
-from setuptools import setup
+from setuptools import find_packages, setup
 
 
 readme_path = join(dirname(__file__), 'README.md')
@@ -18,9 +18,7 @@ setup(
     long_description=readme,
     long_description_content_type='text/markdown',
     license='BSD',
-    packages=['aiomailru', 'aiomailru.logging', 'aiomailru.objects'],
-    package_data={'aiomailru.logging': ['config.yaml']},
-    include_package_data=True,
+    packages=find_packages(),
     install_requires='aiohttp>=3.0.0',
     setup_requires=['pytest-runner'],
     tests_require=['pytest-asyncio', 'pytest-dotenv', 'pytest-localserver'],
