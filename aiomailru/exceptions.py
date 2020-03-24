@@ -3,13 +3,15 @@
 
 class Error(Exception):
 
+    ERROR = 'internal_error'
+
     @property
     def error(self):
         return self.args[0]
 
     def __init__(self, error: str or dict):
         arg = error if isinstance(error, dict) else {
-            'error': 'internal_error',
+            'error': self.ERROR,
             'error_description': error,
         }
         super().__init__(arg)
@@ -18,11 +20,10 @@ class Error(Exception):
 class OAuthError(Error):
     """OAuth error."""
 
-    def __init__(self, error: str):
-        super().__init__({'error': 'oauth_error', 'error_description': error})
+    ERROR = 'oauth_error'
 
 
-class CustomOAuthError(Error):
+class CustomOAuthError(OAuthError):
     """Custom errors that raised when authorization failed."""
 
     ERROR = {'error': '', 'error_description': ''}
