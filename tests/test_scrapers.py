@@ -46,7 +46,7 @@ if reasons:
 
 GROUP_ID = os.environ.get(
     'MAILRU_GROUP_ID',
-    '13076836623474228010'  # My@Mail.Ru official community
+    '5396991818946538245'  # My@Mail.Ru official community
 )
 
 
@@ -62,24 +62,36 @@ class TestScrapers:
         return EMAIL, PASSWD, SCOPE
 
     @pytest.fixture
-    async def api(self, app, cred):
+    async def session(self, app, cred):
         async with ImplicitSession(*app, *cred) as session:
             token = session.session_key
             cookies = session.cookies
-        return APIScraper(TokenSession(*app, token, 0, cookies=cookies))
+        return TokenSession(*app, token, 0, cookies=cookies)
 
     @pytest.mark.asyncio
-    async def test_groups_get(self, api: APIScraper):
-        _ = await api.groups.get(scrape=True)
+    async def test_groups_get(self, session: TokenSession):
+        async with session:
+            api = APIScraper(session)
+            _ = await api.groups.get(scrape=True)
+            await api.browser.disconnect()
 
     @pytest.mark.asyncio
-    async def test_groups_get_info(self, api: APIScraper):
-        _ = await api.groups.getInfo(uids=GROUP_ID, scrape=True)
+    async def test_groups_get_info(self, session: TokenSession):
+        async with session:
+            api = APIScraper(session)
+            _ = await api.groups.getInfo(uids=GROUP_ID, scrape=True)
+            await api.browser.disconnect()
 
     @pytest.mark.asyncio
-    async def test_groups_join(self, api: APIScraper):
-        _ = await api.groups.join(group_id=GROUP_ID, scrape=True)
+    async def test_groups_join(self, session: TokenSession):
+        async with session:
+            api = APIScraper(session)
+            _ = await api.groups.join(group_id=GROUP_ID, scrape=True)
+            await api.browser.disconnect()
 
     @pytest.mark.asyncio
-    async def test_stream_get_by_author(self, api: APIScraper):
-        _ = await api.stream.getByAuthor(uid=GROUP_ID, scrape=True)
+    async def test_stream_get_by_author(self, session: TokenSession):
+        async with session:
+            api = APIScraper(session)
+            _ = await api.stream.getByAuthor(uid=GROUP_ID, scrape=True)
+            await api.browser.disconnect()
