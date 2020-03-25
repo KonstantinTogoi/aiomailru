@@ -13,8 +13,7 @@ The following scrapers are available:
     from aiomailru.scrapers import APIScraper
 
     api = APIScraper(session)
-
-    groups = await api.groups.get()  # current user's groups
+    groups = await api.groups.get(scrape=True)  # current user's groups
 
 Scrapers have the following requirements:
 
@@ -28,7 +27,7 @@ Cookies
 If :code:`session` is instance of :code:`TokenSession` you must set cookies
 that were given by :code:`ImplicitSession`:
 
-.. code-block::
+.. code-block:: python
 
     session = ServerSession(app_id, secret_key, access_token, cookies=cookies)
 
