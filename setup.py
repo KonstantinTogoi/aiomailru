@@ -1,11 +1,4 @@
-from os.path import dirname, join
 from setuptools import find_packages, setup
-
-
-readme_path = join(dirname(__file__), 'README.md')
-
-with open(readme_path) as readme_file:
-    readme = readme_file.read()
 
 
 setup(
@@ -15,8 +8,7 @@ setup(
     author_email='konstantin.togoi@protonmail.com',
     url='https://github.com/KonstantinTogoi/aiomailru',
     description='Platform@Mail.ru Python REST API wrapper',
-    long_description=readme,
-    long_description_content_type='text/markdown',
+    long_description=open('README.rst').read(),
     license='BSD',
     packages=find_packages(),
     install_requires='aiohttp>=3.0.0',
@@ -26,7 +18,7 @@ setup(
         'logging': ['PyYAML'],
         'scrapers': ['pyppeteer<=0.0.25'],
     },
-    keywords=['mail.ru api asyncio'],
+    keywords=['mail.ru rest api scrapers asyncio'],
     classifiers=[
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
