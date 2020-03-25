@@ -84,13 +84,13 @@ Installation
 
 .. code-block:: shell
 
-    pip install aiomailru
+    $ pip install aiomailru
 
 or
 
 .. code-block:: shell
 
-    python setup.py install
+    $ python setup.py install
 
 Supported Python Versions
 -------------------------
@@ -106,13 +106,13 @@ Run all tests.
 
 .. code-block:: shell
 
-    python setup.py test
+    $ python setup.py test
 
 Run tests with PyTest.
 
 .. code-block:: shell
 
-    python -m pytest [-k TEST_NAME]
+    $ python -m pytest [-k TEST_NAME]
 
 License
 -------
