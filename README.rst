@@ -21,7 +21,7 @@ aiomailru
 aiomailru is a `my.mail.ru <https://my.mail.ru>`_ python API wrapper.
 The main features are:
 
-* authorization (`Authorization Code <https://oauth.net/2/grant-types/authorization-code/>`_, `Refresh Token <https://oauth.net/2/grant-types/refresh-token/>`_, `Implicit Flow <https://oauth.net/2/grant-types/implicit/>`_, `Password Grant <https://oauth.net/2/grant-types/password/>`_)
+* authorization (`Authorization Code <https://oauth.net/2/grant-types/authorization-code/>`_, `Implicit Flow <https://oauth.net/2/grant-types/implicit/>`_, `Password Grant <https://oauth.net/2/grant-types/password/>`_, `Refresh Token <https://oauth.net/2/grant-types/refresh-token/>`_)
 * `REST API <https://api.mail.ru/docs/reference/rest/>`_ methods
 * web scrapers
 
