@@ -2,7 +2,8 @@ Authorization
 =============
 
 To authorize with Platform@Mail.Ru OAuth 2.0 you need :code:`app_id`.
-And either :code:`private_key` or :code:`secret_key` you need for executing API requests after authorization.
+And you need either :code:`private_key` or :code:`secret_key`
+for executing API requests after authorization.
 
 After authorization you will receive:
 

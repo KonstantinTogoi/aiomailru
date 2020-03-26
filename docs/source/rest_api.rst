@@ -12,7 +12,7 @@ Executing requests
 
     api = API(session)
 
-    events = await api.strream.get()  # events for current user
+    events = await api.stream.get()  # events for current user
     friends = await api.friends.get()  # current user's friends
 
 Under the hood each API request is enriched with parameters (https://api.mail.ru/docs/guides/restapi/#params):

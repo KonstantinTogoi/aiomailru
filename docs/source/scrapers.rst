@@ -6,7 +6,7 @@ The following scrapers are available:
 * :code:`groups.get`
 * :code:`groups.getInfo`
 * :code:`groups.join`
-* :code:`stream.getByAuthor`
+* :code:`stream.getByAuthor`, works only with a group's id
 
 .. code-block:: python
 

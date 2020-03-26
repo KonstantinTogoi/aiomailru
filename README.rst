@@ -36,12 +36,12 @@ For more details, see
 Client application
 ~~~~~~~~~~~~~~~~~~
 
-Use :code:`ClientSession` in cases when REST API is needed in:
+Use :code:`ClientSession` when REST API is needed in:
 
-- client component of a client-server application
-- standalone mobile/desktop application
+- a client component of the client-server application
+- a standalone mobile/desktop application
 
-i.e. when you embed your app's info (`private_key`) in publicly available code.
+i.e. when you embed your app's info (private key) in publicly available code.
 
 .. code-block:: python
 
@@ -60,10 +60,10 @@ that were received after authorization. For more details, see
 Server application
 ~~~~~~~~~~~~~~~~~~
 
-Use :code:`ServerSession` only in cases when REST API is needed in:
+Use :code:`ServerSession` when REST API is needed in:
 
-- server component of a client-server application
-- in requests from your servers
+- a server component of the client-server application
+- requests from your servers
 
 .. code-block:: python
 
