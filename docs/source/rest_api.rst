@@ -26,12 +26,6 @@ Under the hood each API request is enriched with parameters (https://api.mail.ru
 
 to `authorize request <https://api.mail.ru/docs/guides/restapi/#session>`_.
 
-By default, the session tries to infer which signature circuit to use:
-
-* if :code:`uid` and :code:`private_key` are not empty strings - **client-server** signature circuit is used https://api.mail.ru/docs/guides/restapi/#client
-* else if :code:`secret_key` is not an empty string - **server-server** signature circuit is used https://api.mail.ru/docs/guides/restapi/#server
-* else exception is raised
-
 Objects
 -------
 

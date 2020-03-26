@@ -38,4 +38,3 @@ for user authorization and executing API requests.
     app_id = 'your_client_id'
     private_key = 'your_private_key'
     secret_key = 'your_secret_key'
-

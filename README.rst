@@ -33,8 +33,8 @@ To use Platform@Mail.Ru API you need a registered app and
 For more details, see
 `aiomailru Documentation <https://aiomailru.readthedocs.io/>`_.
 
-ClientSession
-~~~~~~~~~~~~~
+Client application
+~~~~~~~~~~~~~~~~~~
 
 Use :code:`ClientSession` in cases when REST API is needed in:
 
@@ -57,8 +57,8 @@ Pass :code:`access_token` and :code:`uid`
 that were received after authorization. For more details, see
 `aiomailru Documentation <https://aiomailru.readthedocs.io/>`_.
 
-ServerSession
-~~~~~~~~~~~~~
+Server application
+~~~~~~~~~~~~~~~~~~
 
 Use :code:`ServerSession` only in cases when REST API is needed in:
 

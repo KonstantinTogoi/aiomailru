@@ -8,6 +8,7 @@
 
     getting_started
     authorization
+    session
     rest_api
     scrapers
 
