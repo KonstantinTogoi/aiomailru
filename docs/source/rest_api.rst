@@ -15,8 +15,6 @@ Executing requests
     events = await api.strream.get()  # events for current user
     friends = await api.friends.get()  # current user's friends
 
-List of some objects is available here: `objects.md <https://github.com/KonstantinTogoi/aiomailru/blob/master/docs/objects.md>`_.
-
 Under the hood each API request is enriched with parameters (https://api.mail.ru/docs/guides/restapi/#params):
 
 * :code:`method`, required
