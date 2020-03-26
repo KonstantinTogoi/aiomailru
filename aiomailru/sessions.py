@@ -90,7 +90,7 @@ class PublicSession(Session):
 
 
 class TokenSession(PublicSession):
-    """Session for sending authorized requests."""
+    """Session for executing authorized requests."""
 
     API_URL = PublicSession.PUBLIC_URL + '/api'
     ERROR_MSG = 'See https://api.mail.ru/docs/guides/restapi/#sig.'
@@ -205,6 +205,7 @@ class TokenSession(PublicSession):
 
 
 class ClientSession(TokenSession):
+    """Session for executing requests in client applications."""
 
     ERROR_MSG = 'Pass "uid" and "private_key" to use client-server circuit.'
 
@@ -215,6 +216,7 @@ class ClientSession(TokenSession):
 
 
 class ServerSession(TokenSession):
+    """Session for executing requests in server applications."""
 
     ERROR_MSG = 'Pass "secret_key" to use server-server circuit.'
 
@@ -285,6 +287,24 @@ class CodeSession(TokenSession):
             raise OAuthError('got empty authorization response')
 
         return self
+
+
+class CodeClientSession(CodeSession):
+    """`CodeSession` without `secret_key` argument."""
+
+    def __init__(self, app_id, private_key, code, redirect_uri,
+                 pass_error=False, session=None, **kwargs):
+        super().__init__(app_id, private_key, '', code, redirect_uri,
+                         pass_error, session, **kwargs)
+
+
+class CodeServerSession(CodeSession):
+    """`CodeSession` without `private_key` argument."""
+
+    def __init__(self, app_id, secret_key, code, redirect_uri,
+                 pass_error=False, session=None, **kwargs):
+        super().__init__(app_id, '', secret_key, code, redirect_uri,
+                         pass_error, session, **kwargs)
 
 
 class ImplicitSession(TokenSession):
@@ -466,6 +486,8 @@ class ImplicitSession(TokenSession):
 
 
 class ImplicitClientSession(ImplicitSession):
+    """`ImplicitSession` without `secret_key` argument."""
+
     def __init__(self, app_id, private_key, email, passwd, scope,
                  pass_error=False, session=None, **kwargs):
         super().__init__(app_id, private_key, '', email, passwd, scope,
@@ -473,6 +495,8 @@ class ImplicitClientSession(ImplicitSession):
 
 
 class ImplicitServerSession(ImplicitSession):
+    """`ImplicitSession` without `private_key` argument."""
+
     def __init__(self, app_id, secret_key, email, passwd, scope,
                  pass_error=False, session=None, **kwargs):
         super().__init__(app_id, '', secret_key, email, passwd, scope,
@@ -540,6 +564,24 @@ class PasswordSession(TokenSession):
         return self
 
 
+class PasswordClientSession(PasswordSession):
+    """`PasswordSession` without `secret_key` argument."""
+
+    def __init__(self, app_id, private_key, email, passwd, scope,
+                 pass_error=False, session=None, **kwargs):
+        super().__init__(app_id, private_key, '', email, passwd, scope,
+                         pass_error, session, **kwargs)
+
+
+class PasswordServerSession(PasswordSession):
+    """`PasswordSession` without `private_key` argument."""
+
+    def __init__(self, app_id, secret_key, email, passwd, scope,
+                 pass_error=False, session=None, **kwargs):
+        super().__init__(app_id, '', secret_key, email, passwd, scope,
+                         pass_error, session, **kwargs)
+
+
 class RefreshSession(TokenSession):
     """Session with authorization with OAuth 2.0 (Refresh Token).
 
@@ -595,3 +637,21 @@ class RefreshSession(TokenSession):
             raise OAuthError('got empty authorization response')
 
         return self
+
+
+class RefreshClientSession(RefreshSession):
+    """`RefreshSession` without `secret_key` argument."""
+
+    def __init__(self, app_id, private_key, refresh_token,
+                 pass_error=False, session=None, **kwargs):
+        super().__init__(app_id, private_key, '', refresh_token,
+                         pass_error, session, **kwargs)
+
+
+class RefreshServerSession(RefreshSession):
+    """`RefreshSession` without `private_key` argument."""
+
+    def __init__(self, app_id, secret_key, refresh_token,
+                 pass_error=False, session=None, **kwargs):
+        super().__init__(app_id, '', secret_key, refresh_token,
+                         pass_error, session, **kwargs)
