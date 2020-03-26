@@ -27,3 +27,6 @@ from .sessions import (
     RefreshServerSession,
 )
 from .api import API
+
+
+__version__ = '0.1.0rc1'

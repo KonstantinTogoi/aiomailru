@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='aiomailru',
-    version='0.0.24',
+    version='0.1.0rc1',
     author='Konstantin Togoi',
     author_email='konstantin.togoi@protonmail.com',
     url='https://github.com/KonstantinTogoi/aiomailru',
@@ -15,10 +15,7 @@ setup(
     install_requires='aiohttp>=3.0.0',
     setup_requires=['pytest-runner'],
     tests_require=['pytest-asyncio', 'pytest-dotenv', 'pytest-localserver'],
-    extras_require={
-        'logging': ['PyYAML'],
-        'scrapers': ['pyppeteer<=0.0.25'],
-    },
+    extras_require={'scrapers': ['pyppeteer<=0.0.25']},
     keywords=['mail.ru rest api scrapers asyncio'],
     classifiers=[
         'Environment :: Web Environment',
