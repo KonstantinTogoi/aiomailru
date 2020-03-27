@@ -17,19 +17,19 @@ class FormParser(html.parser.HTMLParser):
         self.inputs = {}
 
     def handle_starttag(self, tag, attrs):
-        attrs = defaultdict(str, attrs)
-
         if tag == 'input':
+            attrs = defaultdict(str, attrs)
             if attrs['type'].lower() != 'submit':
                 self.inputs[attrs['name']] = attrs['value']
         elif tag == 'form':
+            attrs = defaultdict(str, attrs)
             if attrs['method'].lower() == 'post':
                 self.url = attrs['action']
 
 
 class AuthPageParser(FormParser):
-    """Authorization page parser."""
+    """Authorization dialog parser."""
 
 
 class AccessPageParser(FormParser):
-    """Access page parser."""
+    """Access dialog parser."""

@@ -2,6 +2,7 @@
 
 
 class Error(Exception):
+    """Base exception."""
 
     ERROR = 'internal_error'
 
