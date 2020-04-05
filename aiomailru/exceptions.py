@@ -70,7 +70,9 @@ class ClientNotAvailableError(CustomOAuthError):
 
 
 class APIError(Error):
-    def __init__(self, error):
+    """API error."""
+
+    def __init__(self, error: dict):
         super().__init__(error)
         self.code = error['error']['error_code']
         self.msg = error['error']['error_msg']
@@ -80,9 +82,11 @@ class APIError(Error):
 
 
 class APIScrapperError(Error):
+    """Scraper error."""
+
     code = 0
 
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         super().__init__(msg)
         self.msg = msg
 

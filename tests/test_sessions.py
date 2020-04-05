@@ -1,5 +1,4 @@
 import json
-from os.path import dirname, join
 from urllib.parse import unquote
 
 import pytest
@@ -13,8 +12,6 @@ from aiomailru.sessions import (
     TokenSession,
     ImplicitSession,
 )
-
-data_path = join(dirname(__file__), 'data')
 
 
 class TestPublicSession:

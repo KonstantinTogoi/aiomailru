@@ -244,7 +244,6 @@ class CodeSession(TokenSession):
     """
 
     OAUTH_URL = 'https://connect.mail.ru/oauth/token'
-    GET_ACCESS_TOKEN_ERROR_MSG = 'Failed to receive access token.'
 
     __slots__ = ('code', 'redirect_uri', 'refresh_token', 'expires_in')
 
@@ -282,7 +281,7 @@ class CodeSession(TokenSession):
                 self.session_key = content['access_token']
                 self.uid = content['x_mailru_vid']
             except KeyError as e:
-                raise OAuthError(str(e.args[0]) + ' is missing in the response')
+                raise OAuthError('%r is missing in the response' % e.args[0])
         else:
             raise OAuthError('got empty authorization response')
 
@@ -482,7 +481,7 @@ class ImplicitSession(TokenSession):
             self.token_type = url.query.get('token_type')
             self.uid = url.query.get('x_mailru_vid')
         except KeyError as e:
-            raise OAuthError(str(e.args[0]) + ' is missing in the response')
+            raise OAuthError('%r is missing in the response' % e.args[0])
 
 
 class ImplicitClientSession(ImplicitSession):
@@ -557,7 +556,7 @@ class PasswordSession(TokenSession):
                 self.session_key = content['access_token']
                 self.uid = content.get('x_mailru_vid')
             except KeyError as e:
-                raise OAuthError(str(e.args[0]) + ' is missing in the response')
+                raise OAuthError('%r is missing in the response' % e.args[0])
         else:
             raise OAuthError('got empty authorization response')
 
@@ -632,7 +631,7 @@ class RefreshSession(TokenSession):
                 self.session_key = content['access_token']
                 self.uid = content.get('x_mailru_vid')
             except KeyError as e:
-                raise OAuthError(str(e.args[0]) + ' is missing in the response')
+                raise OAuthError('%r is missing in the response' % e.args[0])
         else:
             raise OAuthError('got empty authorization response')
 

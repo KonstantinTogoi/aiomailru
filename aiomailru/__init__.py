@@ -2,6 +2,7 @@ from . import api, exceptions, objects, parsers, sessions, utils
 from .utils import parseaddr
 from .exceptions import (
     Error,
+    OAuthError,
     InvalidGrantError,
     InvalidClientError,
     APIError,
