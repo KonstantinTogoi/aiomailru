@@ -12,7 +12,7 @@ setup(
     license='BSD',
     packages=find_packages(),
     python_requires='>=3.5',
-    install_requires='aiohttp>=3.0.0',
+    install_requires=['aiohttp>=3.0.0', 'yarl'],
     setup_requires=['pytest-runner'],
     tests_require=['pytest-asyncio', 'pytest-dotenv', 'pytest-localserver'],
     extras_require={'scrapers': ['pyppeteer<=0.0.25']},
