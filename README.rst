@@ -7,7 +7,7 @@
 .. image:: https://img.shields.io/pypi/pyversions/aiomailru.svg
     :target: https://pypi.python.org/pypi/aiomailru
 
-.. image:: https://img.shields.io/badge/docs-latest-brightgreen.svg
+.. image:: https://readthedocs.org/projects/aiomailru/badge/?version=latest
     :target: https://aiomailru.readthedocs.io/en/latest/
 
 .. image:: https://travis-ci.org/KonstantinTogoi/aiomailru.svg
