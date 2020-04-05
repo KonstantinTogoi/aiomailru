@@ -3,8 +3,8 @@
    :end-before: index-end-marker1
 
 .. toctree::
-    :maxdepth: 1
-    :caption: Manual:
+    :maxdepth: 2
+    :caption: Contents:
 
     getting_started
     authorization

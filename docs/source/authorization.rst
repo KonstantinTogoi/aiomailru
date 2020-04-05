@@ -7,8 +7,11 @@ for executing API requests after authorization.
 
 After authorization you will receive:
 
-* :code:`session_key` (aka :code:`access_token`)
+* :code:`session_key` aka :code:`access_token`
 * :code:`uid` that is necessary only when :code:`secret_key` not passed
+* :code:`refresh_token`
+* :code:`expires_in`
+* :code:`token_type` if Implicit Grant used
 
 Authorization Code Grant
 ------------------------
@@ -17,6 +20,7 @@ Authorization Code Grant
 
     from aiomailru import CodeSession, API
 
+    app_id = 123456
     private_key = 'abcde'
     secret_key = ''
 
@@ -36,6 +40,7 @@ Implicit Grant
 
     from aiomailru import ImplicitSession, API
 
+    app_id = 123456
     private_key = ''
     secret_key = 'xyz'
 
@@ -54,6 +59,7 @@ Password Grant
 
     from aiomailru import PasswordSession, API
 
+    app_id = 123456
     private_key = 'abcde'
     secret_key = 'xyz'
 
@@ -72,6 +78,7 @@ Refresh Token
 
     from aiomailru import RefreshSession, API
 
+    app_id = 123456
     private_key = ''
     secret_key = ''
 

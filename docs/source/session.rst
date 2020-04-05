@@ -24,6 +24,7 @@ ClientSession
 
     session = ClientSession(app_id, 'private key', 'access token', uid)
     api = API(session)
+    ...
 
 CodeClientSession
 ~~~~~~~~~~~~~~~~~
@@ -36,6 +37,7 @@ CodeClientSession
 
     async with CodeClientSession(app_id, 'private key', code, redirect_uri) as session:
         api = API(session)
+        ...
 
 ImplicitClientSession
 ~~~~~~~~~~~~~~~~~~~~~
@@ -48,6 +50,7 @@ ImplicitClientSession
 
     async with ImplicitClientSession(app_id, 'private key', email, passwd, scope) as session:
         api = API(session)
+        ...
 
 PasswordClientSession
 ~~~~~~~~~~~~~~~~~~~~~
@@ -60,6 +63,7 @@ PasswordClientSession
 
     async with PasswordClientSession(app_id, 'private key', email, passwd, scope) as session:
         api = API(session)
+        ...
 
 RefreshClientSession
 ~~~~~~~~~~~~~~~~~~~~
@@ -72,6 +76,7 @@ RefreshClientSession
 
     async with RefreshClientSession(app_id, 'private key', refresh_token) as session:
         api = API(session)
+        ...
 
 Server-Server signature circuit
 -------------------------------
@@ -87,6 +92,7 @@ ServerSession
 
     session = ServerSession(app_id, 'secret key', 'access token')
     api = API(session)
+    ...
 
 CodeServerSession
 ~~~~~~~~~~~~~~~~~
@@ -99,6 +105,7 @@ CodeServerSession
 
     async with CodeServerSession(app_id, 'secret key', code, redirect_uri) as session:
         api = API(session)
+        ...
 
 ImplicitServerSession
 ~~~~~~~~~~~~~~~~~~~~~
@@ -111,6 +118,7 @@ ImplicitServerSession
 
     async with ImplicitServerSession(app_id, 'secret key', email, passwd, scope) as session:
         api = API(session)
+        ...
 
 PasswordServerSession
 ~~~~~~~~~~~~~~~~~~~~~
@@ -123,6 +131,7 @@ PasswordServerSession
 
     async with PasswordServerSession(app_id, 'secret key', email, passwd scope) as session:
         api = API(session)
+        ...
 
 RefreshServerSession
 ~~~~~~~~~~~~~~~~~~~~
@@ -135,3 +144,4 @@ RefreshServerSession
 
     async with RefreshServerSession(app_id, 'secret key', refresh_token) as session:
         api = API(session)
+        ...
