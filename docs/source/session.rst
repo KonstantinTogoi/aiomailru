@@ -179,7 +179,7 @@ Response
 By default, a session after executing request returns response's body
 as :code:`dict` if executing was successful, otherwise it raises an exception.
 
-You can pass :code:`pass_error` parameter to `TokenSession`
+You can pass :code:`pass_error` parameter to :code:`TokenSession`
 for returning original response (including errors).
 
 Error
@@ -187,8 +187,7 @@ Error
 
 In case of an error, by default, an exception is raised.
 You can pass :code:`pass_error` parameter to :code:`TokenSession`
-for returning original error's body as :code:`dict`.
-For example:
+for returning original error's body as :code:`dict`:
 
 .. code-block:: python
 
