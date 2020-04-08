@@ -1,6 +1,33 @@
 Session
 =======
 
+Request
+-------
+
+The session makes **GET** requests when you call methods of an :code:`API` instance.
+Lets consider example at https://api.mail.ru/docs/guides/restapi/#client:
+
+.. code-block:: python
+
+    from aiomailru import TokenSession, API
+
+    app_id = 123456
+    private_key = '7815696ecbf1c96e6894b779456d330e'
+    secret_key = ''
+    session_key = 'be6ef89965d58e56dec21acb9b62bdaa'
+    uid = '1324730981306483817'
+
+    session = TokenSession(app_id, private_key, secret_key, access_token, uid)
+    api = API(session)
+
+    events = await api.stream.get()
+
+is equivalent to the following **GET** request:
+
+.. code-block:: shell
+
+    https://appsmail.ru/platform/api?method=stream.get&app_id=123456&session_key=be6ef89965d58e56dec21acb9b62bdaa&sig=5073f15c6d5b6ab2fde23ac43332b002
+
 By default, the session tries to infer which signature circuit to use:
 
 * if :code:`uid` and :code:`private_key` are not empty strings - **client-server** signature circuit is used https://api.mail.ru/docs/guides/restapi/#client
@@ -11,10 +38,10 @@ You can explicitly choose a circuit for signing requests by passing
 to :code:`API` one of the following sessions:
 
 Client-Server signature circuit
--------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ClientSession
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 :code:`ClientSession` is a subclass of :code:`TokenSession`.
 
@@ -27,7 +54,7 @@ ClientSession
     ...
 
 CodeClientSession
-~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^
 
 :code:`CodeClientSession` is a subclass of :code:`CodeSession`.
 
@@ -40,7 +67,7 @@ CodeClientSession
         ...
 
 ImplicitClientSession
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 :code:`ImplicitClientSession` is a subclass of :code:`ImplicitSession`.
 
@@ -53,7 +80,7 @@ ImplicitClientSession
         ...
 
 PasswordClientSession
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 :code:`PasswordClientSession` is a subclass of :code:`PasswordSession`.
 
@@ -66,7 +93,7 @@ PasswordClientSession
         ...
 
 RefreshClientSession
-~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^
 
 :code:`RefreshClientSession` is a subclass of :code:`RefreshSession`.
 
@@ -79,10 +106,10 @@ RefreshClientSession
         ...
 
 Server-Server signature circuit
--------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ServerSession
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 :code:`ServerSession` is a subclass of :code:`TokenSession`.
 
@@ -95,7 +122,7 @@ ServerSession
     ...
 
 CodeServerSession
-~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^
 
 :code:`CodeServerSession` is a subclass of :code:`CodeSession`.
 
@@ -108,7 +135,7 @@ CodeServerSession
         ...
 
 ImplicitServerSession
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 :code:`ImplicitServerSession` is a subclass of :code:`ImplicitSession`.
 
@@ -121,7 +148,7 @@ ImplicitServerSession
         ...
 
 PasswordServerSession
-~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^
 
 :code:`PasswordServerSession` is a subclass of :code:`PasswordSession`.
 
@@ -129,12 +156,12 @@ PasswordServerSession
 
     from aiomailru import PasswordServerSession, API
 
-    async with PasswordServerSession(app_id, 'secret key', email, passwd scope) as session:
+    async with PasswordServerSession(app_id, 'secret key', email, passwd, scope) as session:
         api = API(session)
         ...
 
 RefreshServerSession
-~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^
 
 :code:`RefreshServerSession` is a subclass of :code:`RefreshSession`.
 
@@ -145,3 +172,24 @@ RefreshServerSession
     async with RefreshServerSession(app_id, 'secret key', refresh_token) as session:
         api = API(session)
         ...
+
+Response
+--------
+
+By default, a session after executing request returns response's body
+as :code:`dict` if executing was successful, otherwise it raises an exception.
+
+You can pass :code:`pass_error` parameter to `TokenSession`
+for returning original response (including errors).
+
+Error
+-----
+
+In case of an error, by default, an exception is raised.
+You can pass :code:`pass_error` parameter to :code:`TokenSession`
+for returning original error's body as :code:`dict`.
+For example:
+
+.. code-block:: python
+
+    {"error": {"error_code": 202, "error_msg": "Access to this object is denied"}}
