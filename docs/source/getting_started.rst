@@ -26,7 +26,7 @@ Sign up in `Mail.Ru <https://mail.ru>`_.
 Application
 -----------
 
-After signing up visit the Platform@Mail.Ru REST API
+After signing up visit Mail.Ru API
 `documentation page <https://api.mail.ru/docs/>`_
 and create a new application: https://api.mail.ru/apps/my/add.
 
