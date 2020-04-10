@@ -7,7 +7,7 @@ setup(
     author='Konstantin Togoi',
     author_email='konstantin.togoi@protonmail.com',
     url='https://github.com/KonstantinTogoi/aiomailru',
-    description='Platform@Mail.ru Python REST API wrapper',
+    description='Python Mail.Ru API wrapper',
     long_description=open('README.rst').read(),
     license='BSD',
     packages=find_packages(),
