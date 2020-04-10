@@ -22,7 +22,7 @@ Lets consider example at https://api.mail.ru/docs/guides/restapi/#client:
 
     events = await api.stream.get()
 
-is equivalent to the following **GET** request:
+It is equivalent to the following **GET** request:
 
 .. code-block:: shell
 
