@@ -124,9 +124,9 @@ class TokenSession(PublicSession):
 
     @property
     def sig_circuit(self):
-        if self.uid and self.private_key:
+        if self.uid and self.private_key and self.app_id:
             return SignatureCircuit.CLIENT_SERVER
-        elif self.secret_key:
+        elif self.secret_key and self.app_id:
             return SignatureCircuit.SERVER_SERVER
         else:
             return SignatureCircuit.UNDEFINED
