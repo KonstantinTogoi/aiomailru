@@ -53,9 +53,9 @@ i.e. when you embed your app's info (private key) in publicly available code.
     events = await api.stream.get()
     friends = await api.friends.getOnline()
 
-Pass :code:`access_token` and :code:`uid`
+Use :code:`access_token` and :code:`uid`
 that were received after authorization. For more details, see
-`aiomailru Documentation <https://aiomailru.readthedocs.io/>`_.
+`authorization instruction <https://aiomailru.readthedocs.io/en/latest/authorization.html>`_.
 
 Server application
 ~~~~~~~~~~~~~~~~~~
@@ -75,9 +75,9 @@ Use :code:`ServerSession` when REST API is needed in:
     events = await api.stream.get()
     friends = await api.friends.getOnline()
 
-Pass :code:`access_token` that was received after authorization.
+Use :code:`access_token` that was received after authorization.
 For more details, see
-`aiomailru Documentation <https://aiomailru.readthedocs.io/>`_.
+`authorization instruction <https://aiomailru.readthedocs.io/en/latest/authorization.html>`_.
 
 Installation
 ------------

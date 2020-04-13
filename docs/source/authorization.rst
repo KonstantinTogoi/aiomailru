@@ -1,18 +1,14 @@
 Authorization
 =============
 
-To authorize with Mail.Ru OAuth 2.0 you need :code:`app_id`.
-And you need either :code:`private_key` or :code:`secret_key`
-for executing API requests after authorization.
-
 The preferred way to authorize is an :code:`async with` statement.
 After authorization the session will have the following attributes:
 
 * :code:`session_key` aka :code:`access_token`
-* :code:`uid` that is necessary only when :code:`secret_key` not passed
 * :code:`refresh_token`
 * :code:`expires_in`
 * :code:`token_type` if Implicit Grant used
+* :code:`uid`
 
 Authorization Code Grant
 ------------------------
@@ -22,8 +18,8 @@ Authorization Code Grant
     from aiomailru import CodeSession, API
 
     app_id = 123456
-    private_key = 'abcde'
-    secret_key = ''
+    private_key = ''
+    secret_key = 'xyz'
 
     async with CodeSession(app_id, private_key, secret_key, code, redirect_uri) as session:
         api = API(session)
@@ -42,8 +38,8 @@ Implicit Grant
     from aiomailru import ImplicitSession, API
 
     app_id = 123456
-    private_key = ''
-    secret_key = 'xyz'
+    private_key = 'abcde'
+    secret_key = ''
 
     async with ImplicitSession(app_id, private_key, secret_key, email, passwd, scope) as session:
         api = API(session)
@@ -62,7 +58,7 @@ Password Grant
 
     app_id = 123456
     private_key = 'abcde'
-    secret_key = 'xyz'
+    secret_key = ''
 
     async with PasswordSession(app_id, private_key, secret_key, email, passwd, scope) as session:
         api = API(session)
@@ -81,7 +77,7 @@ Refresh Token
 
     app_id = 123456
     private_key = ''
-    secret_key = ''
+    secret_key = 'xyz'
 
     async with RefreshSession(app_id, private_key, secret_key, refresh_token) as session:
         api = API(session)
