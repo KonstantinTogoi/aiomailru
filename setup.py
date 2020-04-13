@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='aiomailru',
-    version='0.1.0.post1',
+    version='0.1.1',
     author='Konstantin Togoi',
     author_email='konstantin.togoi@protonmail.com',
     url='https://github.com/KonstantinTogoi/aiomailru',
